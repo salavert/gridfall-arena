@@ -101,6 +101,17 @@ export function createVoltModel(T, hueShift = 0) {
   mesh(barrel, torus(0.2, 0.046), steel, 0, 0, 0.26);
   mesh(barrel, torus(0.142, 0.025), eye, 0, 0, 0.284);
   const bore = mesh(barrel, cylinder(0.126, 0.02), visor, 0, 0, 0.29); bore.rotation.x = Math.PI / 2;
+  // Independent additive rings make the cannon visibly compress energy while
+  // charging. They do not cast shadows and stay outside the merged mesh budget.
+  const chargeMaterial = new T.MeshBasicMaterial({
+    color: 0x8cfff0, transparent: true, opacity: 0,
+    blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide,
+  });
+  const chargeRings = [0.17, 0.225].map((radius, i) => {
+    const ring = mesh(barrel, torus(radius, 0.012 + i * 0.004), chargeMaterial, 0, 0, 0.315 + i * 0.018);
+    ring.castShadow = false; ring.receiveShadow = false; ring.visible = false;
+    return ring;
+  });
   const fins = [];
   for (let i = 0; i < 3; i++) {
     const a = i * Math.PI * 2 / 3;
@@ -146,14 +157,14 @@ export function createVoltModel(T, hueShift = 0) {
     muzzles: [new T.Vector3(0.23, 0.69, 1.01)],
     pose: { armBase: [[-1, 0.5], [-1.3, -0.16]] },
     flashMats: [paint, cream, dark, steel, teal], allMats: materials,
-    volt: { eyes, mouth, antenna, barrel, fins, indicators, eye, lamp },
+    volt: { eyes, mouth, antenna, barrel, fins, indicators, eye, lamp, chargeRings, chargeMaterial },
   };
 }
 
 export function animateVolt(runner, dt) {
   const model = runner.model;
   if (!model.volt) return;
-  const { eyes, mouth, antenna, barrel, fins, indicators, eye, lamp } = model.volt;
+  const { eyes, mouth, antenna, barrel, fins, indicators, eye, lamp, chargeRings, chargeMaterial } = model.volt;
   const t = runner.game.elapsed;
   const charge = Math.min(1, (runner.voltCharge || 0) / 0.85);
   const firing = runner.recoil;
@@ -174,6 +185,14 @@ export function animateVolt(runner, dt) {
   indicators.forEach((m, i) => { m.scale.y = runner.ammo > i ? 1 : 0.15; });
   eye.emissiveIntensity = 1.6 + charge * 2.5;
   lamp.emissiveIntensity = 1.2 + charge * (1.2 + Math.sin(t * 24) * 0.5);
+  const chargeVisible = charge > 0.08;
+  chargeMaterial.opacity = chargeVisible ? 0.18 + charge * 0.62 : 0;
+  chargeRings.forEach((ring, i) => {
+    ring.visible = chargeVisible;
+    ring.rotation.z += dt * (5 + charge * 15) * (i ? -1 : 1);
+    const pulse = 1 + Math.sin(t * (12 + i * 3)) * 0.06 * charge;
+    ring.scale.setScalar((0.82 + charge * 0.22 + i * 0.05) * pulse);
+  });
   model.head.rotation.y = Math.sin(t * 1.3 + runner.id) * 0.025;
   model.body.rotation.z = -runner.moveX * 0.045;
   model.arms[1].rotation.x = model.pose.armBase[1][0] - firing * 0.12;
