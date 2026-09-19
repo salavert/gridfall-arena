@@ -200,7 +200,15 @@ export function runFrame(game, now) {
       const meter = document.getElementById('volt-charge');
       if (meter) meter.hidden = true;
     }
-    game.fixedClock.advance(raw, dt => { for (let i = 0; i < game.simSteps; i++) game.update(dt); });
+    const freeze = Math.min(Math.max(game.hitStop || 0, 0), Math.max(raw, 0));
+    if (freeze > 0) game.hitStop = Math.max(0, game.hitStop - freeze);
+    const simRaw = Math.max(0, raw - freeze);
+    game.fixedClock.advance(simRaw, dt => {
+      for (let i = 0; i < game.simSteps; i++) {
+        if (game.hitStop > 0) return;
+        game.update(dt);
+      }
+    });
     game.pipeline.render(Math.min(raw, 0.2));
     if (game.warmup > 0 && --game.warmup === 0) {
       game.benchmarkQuality(); game.last = performance.now();
