@@ -146,11 +146,20 @@ export function voltShotFeedback(runner, special, charge = 0) {
   const x = runner.x + Math.sin(runner.aimAngle) * 0.9;
   const z = runner.z + Math.cos(runner.aimAngle) * 0.9;
   const color = special ? runner.superColor : runner.lightColor;
-  g.effects.flash(x, 0.72, z, color, 4 + charge * 4, 3.5, 0.1);
-  if (charge > 0.65 || special) {
-    g.effects.burst(x, 0.72, z, color, special ? 18 : 10, 3);
-    g.shake(special ? 0.22 : 0.09, runner.x, runner.z);
+  const dx = Math.sin(runner.aimAngle), dz = Math.cos(runner.aimAngle);
+  const power = special ? 1 : charge;
+  g.effects.flash(x + dx * 0.18, 0.78, z + dz * 0.18, color, 5 + power * 8, 4 + power * 3, 0.09 + power * 0.04);
+  // The engine already emits the base muzzle plume. Volt adds a tight electric
+  // snap so charge is readable from the projectile origin, not just the HUD.
+  const sparkCount = special ? 7 : charge > 0.65 ? 5 : charge > 0.25 ? 2 : 0;
+  for (let i = 0; i < sparkCount; i++) g.effects.spark?.(x + dx * 0.1, 0.76, z + dz * 0.1, color);
+  if (charge > 0.45 || special) {
+    g.effects.ring?.(runner.x, runner.z, 0.18 + power * 0.22, color, 0.16 + power * 0.08, 2.2 + power * 1.8);
+    g.effects.burst(x, 0.72, z, color, special ? 20 : 7 + Math.round(charge * 8), 2.6 + power * 1.5);
   }
+  // Even a tap has a tiny impulse; focused shots should feel substantially
+  // heavier without making sustained fire uncomfortable.
+  g.shake(special ? 0.24 : 0.025 + charge * 0.085, runner.x, runner.z);
 }
 
 // A visible charge is a dodge opportunity, not instantaneous omniscience.
