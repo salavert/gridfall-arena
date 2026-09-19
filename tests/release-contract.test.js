@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 
-test('v0.2 ships the complete Gridfall identity and roster', () => {
+test('v0.3 ships the complete Gridfall identity and roster', () => {
   for (const marker of [
     '<title>Gridfall Arena</title>',
     'GRIDFALL<span>ARENA</span>',

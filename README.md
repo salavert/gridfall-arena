@@ -12,7 +12,7 @@ The latest version is deployed automatically from `main` through GitHub Pages:
 | --- | --- |
 | `WASD` / arrows | Move |
 | Mouse | Aim |
-| Left click | Fire |
+| Left click | Volt: tap for scatter, hold and release for a focused shot. Other runners: fire |
 | `Space` / right click | Hold to aim Overdrive, release to deploy |
 | `T` | Cycle the lighting phase |
 | `P` | Pause |
@@ -20,7 +20,7 @@ The latest version is deployed automatically from `main` through GitHub Pages:
 
 ## The Gridfall run
 
-- **Four complete combat kits:** Volt's scatter cannon, Spectre's rail burst, Hex's arcing rift cores, and Colossus's crushing phase leap.
+- **Four complete combat kits:** Volt's chargeable induction cannon, Spectre's rail burst, Hex's arcing rift cores, and Colossus's crushing phase leap.
 - **Destructible tactical cover:** crates and breakable walls turn every fight into a changing arena.
 - **Core snowball with counterplay:** eliminations and boxes drop cores that increase health and damage, but those gains return to the field when a runner falls.
 - **Escalating collapse:** the void closes sooner and faster, forcing the final duel instead of letting matches drift.
@@ -33,7 +33,9 @@ The latest version is deployed automatically from `main` through GitHub Pages:
 - A short startup benchmark chooses a suitable profile unless the player makes an explicit choice.
 - Runtime monitoring steps quality down if sustained performance falls below the target.
 - Procedural textures, instancing, pooled particles, limited dynamic lights, and spatialized synthesized audio keep the game asset-free.
-- The complete release is delivered as a single cached page, including Three.js and post-processing.
+- A fixed 60 Hz simulation maintains movement and combat speed at ordinary low frame rates. Long tab suspensions are discarded.
+- Volt uses 6,684 triangles and 41 model meshes, with static pieces merged by material and geometry shared between instances.
+- Vite bundles the existing engine and the modular Volt implementation.
 
 ## Development
 
@@ -53,10 +55,21 @@ npm run check
 ## Structure
 
 ```text
-index.html     current self-contained production game
-src/           archived v0.1 modular prototype, retained during migration
-tests/         deterministic rules and release contract tests
+index.html       production engine and interface
+src/volt/        active Volt model, combat, input and fixed simulation clock
+src/ (others)    archived v0.1 prototype
+public/          portrait rendered from the playable model
+scripts/         reproducible CPU portrait renderer
+tests/           combat integration, timing, rules and release tests
 ```
+
+## Volt art and validation
+
+Volt is a small orange workshop robot with cream armor, a dark expressive visor, cyan induction coils and an oversized cannon. Charging narrows the pellet cone and increases range, while the barrel fins close and spin. Bots visibly prepare long-range shots and can dodge a visible enemy charge after a reaction delay.
+
+`npm run portrait` regenerates the selection portrait from the playable geometry, using a deterministic CPU renderer. It is an illustration of the actual model, not a WebGL gameplay capture.
+
+The combat tests load the current production runner and bundled Three classes. GPU visuals, actual device performance and final balance still require playtesting in a WebGL-enabled browser.
 
 ## Release and deployment
 
