@@ -23,6 +23,7 @@ export class Arena {
     this.relays = [];
     this.safeRadius = GAME.arenaSize * 0.72;
     this.dirtyTiles = true;
+    this.tileColor = new THREE.Color();
     this.buildPlatform();
     this.buildCover();
     this.buildRelays();
@@ -219,12 +220,10 @@ export class Arena {
       const y = -0.24 - tile.fall * (1.8 + (tile.id % 4) * 0.18);
       matrix.compose(position.set(tile.x, y, tile.z), quaternion.identity(), scale.set(1, 1 - tile.fall * 0.55, 1));
       this.tileMesh.setMatrixAt(tile.id, matrix);
-      const color = nextState === 'off'
-        ? new THREE.Color(PALETTE.void).multiplyScalar(0.12 + pulse * 0.08)
-        : nextState === 'warning'
-          ? new THREE.Color(PALETTE.danger).multiplyScalar(0.45 + pulse * 0.25)
-          : new THREE.Color(PALETTE.grid).offsetHSL((tile.id % 5) * 0.004, 0, (tile.id % 3) * 0.012);
-      this.tileMesh.setColorAt(tile.id, color);
+      if (nextState === 'off') this.tileColor.set(PALETTE.void).multiplyScalar(0.12 + pulse * 0.08);
+      else if (nextState === 'warning') this.tileColor.set(PALETTE.danger).multiplyScalar(0.45 + pulse * 0.25);
+      else this.tileColor.set(PALETTE.grid).offsetHSL((tile.id % 5) * 0.004, 0, (tile.id % 3) * 0.012);
+      this.tileMesh.setColorAt(tile.id, this.tileColor);
     }
     this.tileMesh.instanceMatrix.needsUpdate = true;
     this.tileMesh.instanceColor.needsUpdate = true;

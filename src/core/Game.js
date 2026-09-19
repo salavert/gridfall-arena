@@ -36,6 +36,8 @@ export class Game {
     this.runners = [];
     this.projectiles = [];
     this.shards = [];
+    this.projectileGeometry = new THREE.CapsuleGeometry(0.1, 0.52, 3, 7);
+    this.projectileGeometry.rotateX(Math.PI / 2);
     this.player = null;
     this.cameraFocus = new THREE.Vector3();
     this.cameraShake = 0;
@@ -115,7 +117,6 @@ export class Game {
     if (this.arena) this.arena.dispose();
     for (const projectile of this.projectiles) {
       this.scene.remove(projectile.mesh);
-      projectile.mesh.geometry.dispose();
     }
     for (const shard of this.shards) {
       this.scene.remove(shard.mesh);
@@ -133,10 +134,8 @@ export class Game {
   }
 
   spawnProjectile(owner, dx, dz) {
-    const geometry = new THREE.CapsuleGeometry(0.1, 0.52, 3, 7);
-    geometry.rotateX(Math.PI / 2);
     const material = stylizedMaterial({ color: owner.definition.accent, emissive: owner.definition.accent, emissiveIntensity: 3.2, roughness: 0.2 });
-    const mesh = new THREE.Mesh(geometry, material);
+    const mesh = new THREE.Mesh(this.projectileGeometry, material);
     mesh.position.set(owner.x + dx * 0.85, 1.05, owner.z + dz * 0.85);
     mesh.rotation.y = Math.atan2(dx, dz);
     this.scene.add(mesh);
@@ -194,7 +193,6 @@ export class Game {
         this.vfx.emit(x, y, z, projectile.color, 7, { speed: 2.8, lift: 1.2, life: 0.25, size: 12, gravity: 2 });
         this.vfx.ring(x, z, projectile.color, 0.16, 0.2);
         this.scene.remove(projectile.mesh);
-        projectile.mesh.geometry.dispose();
         this.projectiles.splice(index, 1);
       }
     }
