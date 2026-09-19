@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#080a18" />
+    <meta name="description" content="Gridfall Arena, a procedural sci-fi arena action game built with Three.js." />
+    <title>Gridfall Arena</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%23080a18%22/><path d=%22M12 18h40L32 52z%22 fill=%22none%22 stroke=%22%235df2ff%22 stroke-width=%226%22/><circle cx=%2232%22 cy=%2230%22 r=%227%22 fill=%22%23ff4fd8%22/></svg>" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <canvas id="game" aria-label="Gridfall Arena game canvas"></canvas>
+
+    <div id="hud" class="is-hidden" aria-live="polite">
+      <div class="hud-top">
+        <div class="brand-mini"><span class="brand-mark"></span>GRIDFALL</div>
+        <div class="match-state"><span id="phase-label">GRID STABLE</span><strong id="phase-time">00:00</strong></div>
+        <div class="rivals"><strong id="rivals-left">7</strong><span>RIVALS</span></div>
+      </div>
+
+      <div class="pilot-panel glass">
+        <div class="pilot-row"><span id="pilot-name">FLUX</span><span id="health-label">100 / 100</span></div>
+        <div class="meter health"><i id="health-fill"></i></div>
+        <div class="pilot-row small"><span>WEAPON</span><span id="heat-label">READY</span></div>
+        <div class="meter heat"><i id="heat-fill"></i></div>
+      </div>
+
+      <div class="shard-panel glass">
+        <span>CORE SHARDS</span>
+        <strong id="shard-count">0</strong>
+        <small id="weapon-level">PULSE MK I</small>
+      </div>
+
+      <div class="ability-panel">
+        <button id="dash-button" class="ability glass" aria-label="Phase dash">
+          <span>SPACE</span><strong>PHASE DASH</strong><i id="dash-cooldown"></i>
+        </button>
+        <button id="overdrive-button" class="ability core glass" aria-label="Overdrive">
+          <span>E</span><strong>OVERDRIVE</strong><i id="core-charge"></i>
+        </button>
+      </div>
+
+      <div id="crosshair"><i></i><i></i></div>
+      <div id="banner"></div>
+      <div id="feed"></div>
+      <div id="damage-vignette"></div>
+      <div id="void-vignette"></div>
+    </div>
+
+    <main id="menu" class="screen is-open">
+      <div class="menu-noise"></div>
+      <section class="menu-copy">
+        <div class="eyebrow"><span></span>PROCEDURAL COMBAT PROTOCOL 01</div>
+        <h1>GRID<span>FALL</span></h1>
+        <p class="lede">Weaponize a living arena. Overload its relays, sever the grid beneath your rivals, and be the last runner online.</p>
+        <div class="rule-strip">
+          <div><strong>01</strong><span>BREAK RELAYS</span></div>
+          <div><strong>02</strong><span>RESHAPE THE MAP</span></div>
+          <div><strong>03</strong><span>OUTRUN THE VOID</span></div>
+        </div>
+      </section>
+
+      <section class="loadout-panel glass">
+        <div class="panel-heading"><span>SELECT RUNNER</span><small>CHASSIS // 3 AVAILABLE</small></div>
+        <div id="runner-cards" class="runner-cards"></div>
+        <button id="play-button" class="play-button"><span>ENTER THE GRID</span><small>SOLO PROTOCOL</small></button>
+        <div class="controls"><kbd>WASD</kbd> MOVE <kbd>MOUSE</kbd> AIM / FIRE <kbd>SPACE</kbd> DASH <kbd>E</kbd> OVERDRIVE</div>
+      </section>
+
+      <footer><span>v0.1.0 // FIRST SIGNAL</span><span>PROCEDURAL GEOMETRY · SYNTHETIC AUDIO · ZERO GAME ASSETS</span></footer>
+    </main>
+
+    <section id="result" class="screen result-screen">
+      <div class="result-card glass">
+        <div id="result-kicker" class="eyebrow"><span></span>RUN COMPLETE</div>
+        <h2 id="result-title">GRID SECURED</h2>
+        <p id="result-copy"></p>
+        <div class="result-stats">
+          <div><strong id="result-rank">#1</strong><span>PLACEMENT</span></div>
+          <div><strong id="result-kills">0</strong><span>ELIMINATIONS</span></div>
+          <div><strong id="result-time">00:00</strong><span>UPTIME</span></div>
+        </div>
+        <button id="again-button" class="play-button"><span>RUN IT BACK</span><small>NEW GRID SEED</small></button>
+        <button id="menu-button" class="text-button">CHANGE RUNNER</button>
+      </div>
+    </section>
+
+    <div id="loading" class="loading"><span class="brand-mark"></span><strong>BOOTING GRID</strong><i></i></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
