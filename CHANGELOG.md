@@ -2,6 +2,19 @@
 
 All notable changes to Gridfall Arena are documented here.
 
+## [0.2.0] - 2026-09-19
+
+### Changed
+
+- Replaced the sparse vertical slice with a complete eight-runner arena game.
+- Rebuilt the interface around a high-contrast neon broadcast identity.
+- Added four distinct combat kits: Volt, Spectre, Hex, and Colossus.
+- Accelerated reloads, Overdrive charge, cover destruction, and the void timeline for shorter, denser matches.
+- Added destructible cover, core drops, bushes, water, varied procedural arenas, combat bots, aim previews, and spectator results.
+- Restored dynamic day-to-blackout lighting, shadows, ambient occlusion, bloom, particles, camera feedback, animation, synthesized positional audio, and mobile controls.
+- Added automatic quality selection and runtime performance adaptation.
+- Reworked all player-facing terminology around runners, cores, Overdrive, and the collapsing void.
+
 ## [0.1.0] - 2026-09-19
 
 ### Added

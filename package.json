@@ -1,9 +1,9 @@
 {
   "name": "gridfall-arena",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "A procedural arena action game where players weaponize a collapsing energy grid.",
+  "description": "A neon procedural arena brawler where runners harvest cores and survive a collapsing grid.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
