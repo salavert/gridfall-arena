@@ -107,6 +107,7 @@ export function createVoltModel(T, hueShift = 0) {
     color: 0x8cfff0, transparent: true, opacity: 0,
     blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide,
   });
+  materials.push(chargeMaterial);
   const chargeRings = [0.17, 0.225].map((radius, i) => {
     const ring = mesh(barrel, torus(radius, 0.012 + i * 0.004), chargeMaterial, 0, 0, 0.315 + i * 0.018);
     ring.castShadow = false; ring.receiveShadow = false; ring.visible = false;
@@ -124,7 +125,7 @@ export function createVoltModel(T, hueShift = 0) {
   arms[1].rotation.x = -1.3; arms[1].rotation.z = -0.16;
   // Combine static pieces with the same material within each animated joint.
   // Charge fins, eyes and ammo lights retain their independent transforms.
-  const moving = new Set([...eyes, mouth, ...fins, ...indicators]);
+  const moving = new Set([...eyes, mouth, ...fins, ...indicators, ...chargeRings]);
   const groups = [];
   root.traverse(o => { if (o.isGroup) groups.push(o); });
   groups.forEach((parent, groupIndex) => {
