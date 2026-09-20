@@ -12,7 +12,7 @@ import { shootVolt, controlVoltDesktop, controlVoltTouch, updateVoltCharge, reac
 // only browser bootstrap. No second Three instance or alternate runner model.
 let source = (await readFile(new URL('../index.html', import.meta.url),'utf8')).match(/<script type="module">([\s\S]*?)<\/script>/)[1];
 source = source.slice(0,source.indexOf(';function ud('))+';export {fu,Vu,Bc,VOLT_GRAPHICS};';
-source = source.replace(/from '(\.\/src\/volt\/[^']+)'/g,(_,p)=>`from '${new URL('../'+p,import.meta.url)}'`).replace(/import '\.\/src\/volt\/styles.css';/,'');
+source = source.replace(/from '(\.\/src\/[^']+)'/g,(_,p)=>`from '${new URL('../'+p,import.meta.url)}'`).replace(/import '\.\/src\/[^']+\.css';/g,'');
 globalThis.window = { addEventListener(){}, devicePixelRatio:1 };
 globalThis.document = { getElementById(){return null;} };
 const moduleDir = await mkdtemp(join(tmpdir(), 'gridfall-volt-test-'));

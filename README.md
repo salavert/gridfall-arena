@@ -4,7 +4,7 @@ Gridfall Arena is a fast solo arena brawler built with Three.js. Pick one of fou
 
 ## Play
 
-The latest version is deployed automatically from `main` through GitHub Pages:
+The latest published version is deployed from `main` through the manual GitHub Pages workflow:
 
 **https://salavert.github.io/gridfall-arena/**
 
@@ -55,7 +55,10 @@ npm run check
 ## Structure
 
 ```text
-index.html       production engine and interface
+index.html       production scene/render loop and interface
+src/game/        production roster, rules and world-facing constants
+src/presentation/ pure combat/camera presentation tuning
+src/systems/     production audio system
 src/volt/        active Volt model, combat, input and fixed simulation clock
 src/ (others)    archived v0.1 prototype
 public/          portrait rendered from the playable model
@@ -73,7 +76,7 @@ The combat tests load the current production runner and bundled Three classes. G
 
 ## Release and deployment
 
-Every push to `main` runs tests, builds the production bundle, and deploys it to GitHub Pages. Tagged versions should follow semantic versioning:
+Every push to `main` runs `npm run check` in CI. GitHub Pages deployment is intentionally manual through the `Deploy GitHub Pages` workflow, so visual work can land without publishing every intermediate commit. Tagged versions should follow semantic versioning:
 
 ```bash
 npm version patch
