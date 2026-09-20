@@ -263,6 +263,23 @@ def build_teen_clothes(body: bpy.types.Object, character: str):
     return pieces
 
 
+def strip_armature(objects, keep=None):
+    for obj in list(objects):
+        if obj.type == 'ARMATURE' and obj is not keep:
+            bpy.data.objects.remove(obj, do_unlink=True)
+
+
+def make_rigid(obj: bpy.types.Object, rig, bone_name: str) -> None:
+    for modifier in list(obj.modifiers):
+        if modifier.type == 'ARMATURE':
+            obj.modifiers.remove(modifier)
+    world = obj.matrix_world.copy()
+    obj.parent = rig
+    obj.parent_type = 'BONE'
+    obj.parent_bone = bone_name
+    obj.matrix_world = world
+
+
 def attach_hair(path: Path, rig, color, *, scale: float = 1.0):
     imported = import_asset(path)
     source_rig = find_armature(imported)
