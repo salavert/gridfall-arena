@@ -790,3 +790,45 @@ body.result-lose canvas#game {
     animation: none;
   }
 }
+
+
+/* Hero stage wins over the legacy responsive menu rules kept below for result-screen compatibility. */
+@media (max-width: 860px) {
+  #menu.open {
+    display: block;
+    padding: 0;
+  }
+
+  .menu-brand {
+    max-width: 88vw;
+  }
+
+  #cards {
+    width: min(810px, 100%);
+    max-width: none;
+  }
+
+  #menu-hint {
+    margin: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  #menu.open {
+    display: block;
+    padding: 0;
+  }
+
+  #menu #tagline {
+    display: block;
+  }
+
+  .menu-brand {
+    max-width: 92vw;
+  }
+
+  #cards {
+    width: 100%;
+    max-width: none;
+  }
+}
