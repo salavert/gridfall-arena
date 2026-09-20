@@ -13,7 +13,7 @@ export function nextRunnerId(id, step) {
 }
 
 // Columns follows the roster's responsive layout. No focus or DOM dependency.
-export function menuKeyAction({ code, key, altKey, ctrlKey, metaKey }, columns = 4) {
+export function menuKeyAction({ code, key, altKey, ctrlKey, metaKey }, columns = 3) {
   if (altKey || ctrlKey || metaKey) return null;
   const input = code || key?.toLowerCase();
   if (['ArrowLeft', 'KeyA', 'arrowleft', 'a'].includes(input)) return { step: -1 };

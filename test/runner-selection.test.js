@@ -28,7 +28,7 @@ test('menu keys support physical keys, fallbacks, two rows and browser shortcuts
   assert.deepEqual(menuKeyAction({ code: 'ArrowUp' }, 2), { step: -2 });
   assert.deepEqual(menuKeyAction({ code: 'KeyS' }, 2), { step: 2 });
   assert.deepEqual(menuKeyAction({ code: 'ArrowDown' }, 3), { step: 3 });
-  assert.equal(menuKeyAction({ code: 'ArrowUp' }), null);
+  assert.deepEqual(menuKeyAction({ code: 'ArrowUp' }), { step: -3 });
   assert.equal(menuKeyAction({ code: 'Escape' }), null);
   for (const modifier of ['altKey', 'ctrlKey', 'metaKey']) {
     assert.equal(menuKeyAction({ code: 'KeyD', [modifier]: true }), null);
