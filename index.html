@@ -50,21 +50,51 @@
       <div id="stats"></div>
     </div>
 
-    <div id="menu" class="screen">
-      <h1 id="title">GRIDFALL<span>ARENA</span></h1>
-      <div id="tagline">Last runner online. Harvest cores. Outlive the collapsing grid.</div>
-      <div id="version">VERSION 0.3.0 · MEET VOLT</div>
-      <div id="cards"></div>
-      <button class="big-btn" id="play">ENTER THE GRID</button>
-      <div id="menu-hint"><span class="for-keys">Destroy cover, steal cores and charge your overdrive before the void closes</span><span class="for-touch">Left thumb moves &middot; right thumb drags to aim, release to fire &middot; tap to auto-aim</span></div>
+    <div id="menu" class="screen menu-screen">
+      <div class="menu-brand">
+        <div class="menu-eyebrow">LAST RUNNER ONLINE // LIVE GRID</div>
+        <h1 id="title">GRIDFALL<span>ARENA</span></h1>
+        <div id="tagline">Harvest cores. Break cover. Outlive the collapsing grid.</div>
+        <div id="version">VERSION 0.3.0 · CINEMATIC FRONT END</div>
+      </div>
+
+      <section class="hero-panel" aria-live="polite">
+        <div class="hero-kicker" id="hero-kicker">RUNNER // 01</div>
+        <div class="hero-name" id="hero-name">VOLT</div>
+        <div class="hero-role" id="hero-role"></div>
+        <div class="hero-blurb" id="hero-blurb"></div>
+        <div class="hero-stats">
+          <div class="hero-stat"><span>HEALTH</span><i><b id="hero-health"></b></i></div>
+          <div class="hero-stat"><span>RANGE</span><i><b id="hero-range"></b></i></div>
+          <div class="hero-stat"><span>DAMAGE</span><i><b id="hero-damage"></b></i></div>
+        </div>
+      </section>
+
+      <div class="menu-controls">
+        <div id="cards" aria-label="Runner selection"></div>
+        <div class="menu-cta">
+          <button class="big-btn" id="play">ENTER THE GRID</button>
+          <div id="menu-hint"><span class="for-keys">Choose a runner while the arena stays live in the background</span><span class="for-touch">Choose a runner · left thumb moves · right thumb aims</span></div>
+        </div>
+      </div>
     </div>
 
-    <div id="result" class="screen">
-      <h1 id="result-title">GRID SECURED</h1>
-      <div id="result-rank" class="outline"></div>
-      <div id="result-stats"></div>
-      <button class="big-btn" id="again">RUN IT BACK</button>
-      <button class="ghost-btn" id="to-menu">CHANGE RUNNER</button>
+    <div id="match-intro" aria-hidden="true">
+      <div class="match-intro-kicker">RUNNER LOCKED // DEPLOYING</div>
+      <div id="match-intro-name">VOLT</div>
+    </div>
+
+    <div id="result" class="screen result-screen">
+      <section class="result-panel">
+        <div class="result-kicker" id="result-kicker">ARENA CLEARED</div>
+        <h1 id="result-title">GRID SECURED</h1>
+        <div id="result-rank" class="outline"></div>
+        <div id="result-stats"></div>
+        <div class="result-actions">
+          <button class="big-btn" id="again">RUN IT BACK</button>
+          <button class="ghost-btn" id="to-menu">CHANGE RUNNER</button>
+        </div>
+      </section>
     </div>
 
     <div id="toast"></div>
