@@ -373,9 +373,14 @@ def setup_preview_camera(character_objects, output: Path, name: str):
         look_at(light, center)
 
     scene = bpy.context.scene
-    scene.render.engine = 'BLENDER_EEVEE'
-    scene.render.resolution_x = 640
-    scene.render.resolution_y = 640
+    scene.render.engine = 'BLENDER_WORKBENCH'
+    scene.display.shading.light = 'STUDIO'
+    scene.display.shading.color_type = 'MATERIAL'
+    scene.display.shading.show_shadows = True
+    scene.display.shading.show_cavity = True
+    scene.display.shading.cavity_type = 'BOTH'
+    scene.render.resolution_x = 384
+    scene.render.resolution_y = 384
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = 'PNG'
     scene.render.filepath = str(output / f'{name}-preview.png')
