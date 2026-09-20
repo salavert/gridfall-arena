@@ -195,28 +195,19 @@ def duplicate_weighted_region(
 def style_teen_base(objects, character: str):
     meshes = mesh_objects(objects)
     body = max(meshes, key=lambda obj: len(obj.data.vertices))
-    skin = flat_material(
-        'GF_Skin_Carla' if character == 'carla' else 'GF_Skin_Bruno',
-        (.84, .59, .43, 1) if character == 'carla' else (.82, .55, .39, 1),
-        .82,
-    )
-    eyes = flat_material('GF_Eyes', (.045, .025, .018, 1), .48)
-    brows = flat_material(
-        'GF_Brows_Carla' if character == 'carla' else 'GF_Brows_Bruno',
-        (.48, .34, .20, 1) if character == 'carla' else (.20, .11, .055, 1),
-        .84,
-    )
-
+    # Keep Quaternius' authored skin/eye/brow textures. The previous flat
+    # material pass erased most facial information and made the pilot look
+    # mannequin-like.
     for obj in meshes:
-        name = obj.name.lower()
-        material = skin
-        if 'eye' in name and 'brow' not in name:
-            material = eyes
-        elif 'brow' in name:
-            material = brows
-        obj.data.materials.clear()
-        obj.data.materials.append(material)
-
+        for material in obj.data.materials:
+            if not material:
+                continue
+            material.diffuse_color = (1, 1, 1, 1)
+            if material.use_nodes:
+                principled = material.node_tree.nodes.get('Principled BSDF')
+                if principled:
+                    principled.inputs['Roughness'].default_value = .78
+                    principled.inputs['Metallic'].default_value = 0
     return body
 
 
@@ -263,6 +254,175 @@ def build_teen_clothes(body: bpy.types.Object, character: str):
     return pieces
 
 
+def bone_depth(pose_bone) -> int:
+    depth = 0
+    parent = pose_bone.parent
+    while parent is not None:
+        depth += 1
+        parent = parent.parent
+    return depth
+
+
+def pose_outfit_rig_to_target_bind(source_rig, target_rig) -> None:
+    source_rig.data.pose_position = 'POSE'
+    target_rig.data.pose_position = 'REST'
+    for pose_bone in sorted(source_rig.pose.bones, key=bone_depth):
+        target_bone = target_rig.data.bones.get(pose_bone.name)
+        if target_bone is None:
+            continue
+        # PoseBone.matrix is armature-space. Matching it to the target's bind
+        # matrix lets Blender's existing Armature modifier perform the exact
+        # weighted adult→Teen bind-space reprojection for us.
+        pose_bone.matrix = target_bone.matrix_local.copy()
+        bpy.context.view_layer.update()
+
+
+def outfit_piece_key(name: str) -> str | None:
+    lower = name.lower()
+    if 'peasant_body' in lower:
+        return 'body'
+    if 'peasant_arms' in lower:
+        return 'arms'
+    if 'peasant_legs' in lower:
+        return 'legs'
+    if 'peasant_feet' in lower or 'peasant_boot' in lower:
+        return 'feet'
+    return None
+
+
+def retarget_peasant_outfit(path: Path, target_rig, character: str):
+    imported = import_asset(path)
+    source_rig = find_armature(imported)
+    pose_outfit_rig_to_target_bind(source_rig, target_rig)
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+
+    if character == 'carla':
+        palette = {
+            'body': flat_material('GF_Carla_Jacket', (.20, .34, .43, 1), .78),
+            'arms': flat_material('GF_Carla_Sleeves', (.76, .30, .23, 1), .82),
+            'legs': flat_material('GF_Carla_Jeans', (.18, .31, .43, 1), .84),
+            'feet': flat_material('GF_Carla_Boots', (.19, .105, .055, 1), .66),
+        }
+    else:
+        palette = {
+            'body': flat_material('GF_Bruno_Vest', (.10, .28, .50, 1), .76),
+            'arms': flat_material('GF_Bruno_Shirt', (.88, .66, .20, 1), .82),
+            'legs': flat_material('GF_Bruno_Pants', (.13, .23, .36, 1), .84),
+            'feet': flat_material('GF_Bruno_Boots', (.14, .085, .05, 1), .66),
+        }
+
+    result = []
+    for source in mesh_objects(imported):
+        piece = outfit_piece_key(source.name)
+        if piece is None:
+            continue
+
+        evaluated = source.evaluated_get(depsgraph)
+        baked_mesh = bpy.data.meshes.new_from_object(
+            evaluated,
+            preserve_all_data_layers=True,
+            depsgraph=depsgraph,
+        )
+        baked_mesh.name = f'{character.title()}_{piece.title()}_TeenFit'
+
+        clone = source.copy()
+        clone.data = baked_mesh
+        clone.name = baked_mesh.name
+        bpy.context.collection.objects.link(clone)
+
+        # Keep source vertex groups (topology is unchanged by the armature
+        # modifier), but replace the source-rig modifier with the Teen rig.
+        for modifier in list(clone.modifiers):
+            clone.modifiers.remove(modifier)
+
+        source_relative = source_rig.matrix_world.inverted() @ source.matrix_world
+        clone.parent = target_rig
+        clone.matrix_world = target_rig.matrix_world @ source_relative
+
+        modifier = clone.modifiers.new('GridfallTeenRig', 'ARMATURE')
+        modifier.object = target_rig
+        clone.data.materials.clear()
+        clone.data.materials.append(palette[piece])
+        result.append(clone)
+
+    # Remove every source outfit object and its adult rig after baking.
+    for obj in imported:
+        if obj.name in bpy.data.objects:
+            bpy.data.objects.remove(obj, do_unlink=True)
+
+    if len(result) < 4:
+        raise RuntimeError(
+            f'Expected Peasant body/arms/legs/feet, baked {len(result)} pieces'
+        )
+    return result
+
+
+def keep_exposed_teen_skin(body: bpy.types.Object) -> None:
+    # Full Peasant clothing covers the torso and legs. Keep only head/neck and
+    # hands from the Teen body to avoid z-fighting and to reduce duplicate
+    # geometry while retaining the authored face.
+    exposed = {
+        'Head', 'neck_01', 'hand_l', 'hand_r',
+        'thumb_01_l', 'thumb_02_l', 'thumb_03_l', 'thumb_04_leaf_l',
+        'index_01_l', 'index_02_l', 'index_03_l', 'index_04_leaf_l',
+        'middle_01_l', 'middle_02_l', 'middle_03_l', 'middle_04_leaf_l',
+        'ring_01_l', 'ring_02_l', 'ring_03_l', 'ring_04_leaf_l',
+        'pinky_01_l', 'pinky_02_l', 'pinky_03_l', 'pinky_04_leaf_l',
+        'thumb_01_r', 'thumb_02_r', 'thumb_03_r', 'thumb_04_leaf_r',
+        'index_01_r', 'index_02_r', 'index_03_r', 'index_04_leaf_r',
+        'middle_01_r', 'middle_02_r', 'middle_03_r', 'middle_04_leaf_r',
+        'ring_01_r', 'ring_02_r', 'ring_03_r', 'ring_04_leaf_r',
+        'pinky_01_r', 'pinky_02_r', 'pinky_03_r', 'pinky_04_leaf_r',
+    }
+    group_ids = {
+        group.index for group in body.vertex_groups
+        if group.name in exposed
+    }
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    bm.verts.ensure_lookup_table()
+    doomed = []
+    for vertex in bm.verts:
+        source_vertex = body.data.vertices[vertex.index]
+        keep = any(
+            assignment.group in group_ids and assignment.weight >= .08
+            for assignment in source_vertex.groups
+        )
+        if not keep:
+            doomed.append(vertex)
+    bmesh.ops.delete(bm, geom=doomed, context='VERTS')
+    bm.to_mesh(body.data)
+    bm.free()
+    body.data.update()
+
+
+def weighted_region_bounds(obj: bpy.types.Object, group_names: tuple[str, ...]):
+    group_ids = {
+        group.index for group in obj.vertex_groups
+        if group.name in set(group_names)
+    }
+    points = []
+    for vertex in obj.data.vertices:
+        if any(
+            assignment.group in group_ids and assignment.weight >= .15
+            for assignment in vertex.groups
+        ):
+            points.append(obj.matrix_world @ vertex.co)
+    if not points:
+        return None
+    lo = Vector((
+        min(point.x for point in points),
+        min(point.y for point in points),
+        min(point.z for point in points),
+    ))
+    hi = Vector((
+        max(point.x for point in points),
+        max(point.y for point in points),
+        max(point.z for point in points),
+    ))
+    return lo, hi
+
+
 def strip_armature(objects, keep=None):
     for obj in list(objects):
         if obj.type == 'ARMATURE' and obj is not keep:
@@ -280,7 +440,7 @@ def make_rigid(obj: bpy.types.Object, rig, bone_name: str) -> None:
     obj.matrix_world = world
 
 
-def attach_hair(path: Path, rig, color, *, scale: float = 1.0):
+def attach_hair(path: Path, rig, body, color, *, fullness: float = 1.12):
     imported = import_asset(path)
     source_rig = find_armature(imported)
     source_bone = source_rig.data.bones.get('Head')
@@ -296,16 +456,30 @@ def attach_hair(path: Path, rig, color, *, scale: float = 1.0):
     result = []
     for obj in mesh_objects(imported):
         obj.matrix_world = align @ obj.matrix_world
-        if scale != 1:
-            # Scale around the aligned Head origin to preserve placement.
-            origin = target_head_world.translation
-            local = obj.matrix_world.translation - origin
-            obj.matrix_world.translation = origin + local * scale
-            obj.scale *= scale
+        result.append(obj)
+
+    head_bounds = weighted_region_bounds(body, ('Head', 'neck_01'))
+    if head_bounds and result:
+        head_lo, head_hi = head_bounds
+        hair_lo, hair_hi = world_bounds(result)
+        head_center = (head_lo + head_hi) * .5
+        hair_center = (hair_lo + hair_hi) * .5
+        head_width = max(.001, head_hi.x - head_lo.x)
+        hair_width = max(.001, hair_hi.x - hair_lo.x)
+        fit = max(.62, min(1.08, (head_width * fullness) / hair_width))
+
+        desired = head_center.copy()
+        desired.z += (head_hi.z - head_lo.z) * .10
+        for obj in result:
+            world = obj.matrix_world.copy()
+            world.translation = desired + (world.translation - hair_center) * fit
+            obj.matrix_world = world
+            obj.scale *= fit
+
+    for obj in result:
         make_rigid(obj, rig, 'Head')
         obj.data.materials.clear()
         obj.data.materials.append(hair_mat)
-        result.append(obj)
 
     strip_armature(imported, keep=rig)
     return result
@@ -546,7 +720,7 @@ def setup_preview_camera(character_objects, output: Path, name: str):
     bpy.ops.object.camera_add(location=(2.0, -3.0, 1.65))
     camera = bpy.context.object
     camera.data.type = 'ORTHO'
-    camera.data.ortho_scale = max(1.72, (hi.z - lo.z) * 1.28)
+    camera.data.ortho_scale = 1.72
     bpy.context.scene.camera = camera
 
     def look_at(obj, target):
@@ -560,7 +734,7 @@ def setup_preview_camera(character_objects, output: Path, name: str):
     scene = bpy.context.scene
     scene.render.engine = 'BLENDER_WORKBENCH'
     scene.display.shading.light = 'STUDIO'
-    scene.display.shading.color_type = 'MATERIAL'
+    scene.display.shading.color_type = 'TEXTURE'
     scene.display.shading.show_shadows = True
     scene.display.shading.show_cavity = True
     scene.display.shading.cavity_type = 'BOTH'
@@ -579,21 +753,39 @@ def build_character(source: Path, output: Path, character: str):
     reset_scene()
     if character == 'carla':
         base_file = source / 'Teen_Female_FullBody.gltf'
+        outfit_file = source / 'Female_Peasant.glb'
         hair_file = source / 'Hair_Long.glb'
         hair_color = (.55, .40, .23, 1)
-        hair_scale = .88
+        hair_fullness = 1.13
     else:
         base_file = source / 'Teen_Male_FullBody.gltf'
+        outfit_file = source / 'Male_Peasant.glb'
         hair_file = source / 'Hair_SimpleParted.glb'
         hair_color = (.20, .105, .055, 1)
-        hair_scale = .90
+        hair_fullness = 1.10
 
     base = import_asset(base_file)
     rig = find_armature(base)
     rig.name = 'GridfallRig'
     body = style_teen_base(base, character)
-    build_teen_clothes(body, character)
-    attach_hair(hair_file, rig, hair_color, scale=hair_scale)
+
+    # Reproject authored Peasant clothing to the Teen bind pose instead of
+    # wearing an adult rig or generating skin-tight clothing from the body.
+    outfit = retarget_peasant_outfit(outfit_file, rig, character)
+    hair = attach_hair(
+        hair_file,
+        rig,
+        body,
+        hair_color,
+        fullness=hair_fullness,
+    )
+
+    # Normalize while the complete Teen body still provides canonical bounds.
+    rig.data.pose_position = 'REST'
+    bpy.context.view_layer.update()
+    normalize_rig_height(rig, [body], TARGET_HEIGHT)
+
+    keep_exposed_teen_skin(body)
 
     if character == 'carla':
         add_blonde_streak(rig)
@@ -607,30 +799,16 @@ def build_character(source: Path, output: Path, character: str):
     )
     stash_actions(rig, actions)
     custom_actions(rig, character)
-
-    # The Teen body defines the visual scale. Hair, clothes and props are all
-    # descendants or attachments of the same rig and therefore scale together.
-    for track in rig.animation_data.nla_tracks:
-        track.mute = True
-    rig.data.pose_position = 'REST'
-    bpy.context.view_layer.update()
-    character_meshes = [
-        obj for obj in bpy.context.scene.objects
-        if obj.type in {'MESH', 'CURVE'} and not obj.name.startswith(('Plane', 'Area', 'Camera'))
-    ]
-    # Canonical gameplay height is defined by the Teen body only. Modular
-    # hair/props can have source-space bounds from a differently proportioned
-    # donor and must never shrink the whole character.
-    normalize_rig_height(rig, [body], TARGET_HEIGHT)
     rig.data.pose_position = 'POSE'
     set_preview_pose(rig)
 
+    character_meshes = [
+        obj for obj in bpy.context.scene.objects
+        if obj.type == 'MESH' and not obj.name.startswith(('Plane', 'Area', 'Camera'))
+    ]
+
     output.mkdir(parents=True, exist_ok=True)
-    setup_preview_camera(
-        [obj for obj in character_meshes if obj.type == 'MESH'],
-        output,
-        character,
-    )
+    setup_preview_camera(character_meshes, output, character)
     for obj in list(bpy.context.scene.objects):
         if obj.name.startswith(('Plane', 'Area', 'Camera')):
             bpy.data.objects.remove(obj, do_unlink=True)

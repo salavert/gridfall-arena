@@ -60,6 +60,8 @@ jobs:
             fetch "$UBC_BASE/$file" "$file"
           done
 
+          fetch "$ASSET_BASE/outfits/Female_Peasant.glb" Female_Peasant.glb
+          fetch "$ASSET_BASE/outfits/Male_Peasant.glb" Male_Peasant.glb
           fetch "$ASSET_BASE/hair/Hair_Long.glb" Hair_Long.glb
           fetch "$ASSET_BASE/hair/Hair_SimpleParted.glb" Hair_SimpleParted.glb
           fetch "$ASSET_BASE/animations/UAL1.glb" UAL1.glb
