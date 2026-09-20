@@ -26,3 +26,13 @@ test('result treatment keeps victory and defeat visually distinct', () => {
     tone: 'lose',
   });
 });
+
+test('hero owns most of the attract cycle and shot boundaries are exact', () => {
+  const [hero, profile, wide] = MENU_SHOTS;
+  assert.ok(hero.duration > profile.duration + wide.duration);
+  assert.ok(wide.duration < profile.duration);
+  assert.deepEqual(frontEndShotAt(hero.duration), { id: 'profile', progress: 0 });
+  assert.deepEqual(frontEndShotAt(hero.duration + profile.duration), { id: 'wide', progress: 0 });
+  assert.deepEqual(frontEndShotAt(hero.duration + profile.duration + wide.duration), { id: 'hero', progress: 0 });
+  assert.equal(frontEndShotAt(-0.1).id, 'wide');
+});

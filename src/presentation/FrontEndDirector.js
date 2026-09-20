@@ -3,9 +3,9 @@ const damp = (current, target, speed, dt) => current + (target - current) * (1 -
 const mix = (a, b, t) => a + (b - a) * t;
 
 export const MENU_SHOTS = Object.freeze([
-  Object.freeze({ id: 'hero', duration: 7.5 }),
-  Object.freeze({ id: 'profile', duration: 4.4 }),
-  Object.freeze({ id: 'wide', duration: 3.6 }),
+  Object.freeze({ id: 'hero', duration: 12 }),
+  Object.freeze({ id: 'profile', duration: 4 }),
+  Object.freeze({ id: 'wide', duration: 2 }),
 ]);
 
 export function frontEndShotAt(seconds) {
@@ -41,7 +41,9 @@ export class FrontEndDirector {
     this.introT = 0;
     this.endT = 0;
     this.endState = null;
-    this.menuAngle = 0.72;
+    this.menuAngle = null;
+    this.angleCheckT = 0;
+    this.snapMenuCamera = true;
     this.cachedRunner = null;
   }
 
@@ -61,6 +63,10 @@ export class FrontEndDirector {
 
   select(id, immediate = false) {
     this.selected = id;
+    this.menuT = 0;
+    this.menuAngle = null;
+    this.angleCheckT = 0;
+    this.snapMenuCamera = true;
     this.cachedRunner = null;
     this.selectionPulse = immediate ? 0 : 1;
     const menu = get('menu');
@@ -69,6 +75,7 @@ export class FrontEndDirector {
   }
 
   startMatch(id) {
+    this.game.camera.clearViewOffset();
     this.mode = 'intro';
     this.selected = id;
     this.introT = 1.45;
@@ -83,6 +90,7 @@ export class FrontEndDirector {
   }
 
   beginEnd(won, subject, killer) {
+    this.game.camera.clearViewOffset();
     this.mode = 'end';
     this.endT = 0;
     this.endState = {
@@ -116,13 +124,11 @@ export class FrontEndDirector {
       this.selectionPulse = Math.max(0, this.selectionPulse - dt * 2.8);
       const runner = this.findSelectedRunner();
       if (runner && runner.alive) {
-        runner.readabilityHalo.material.opacity = Math.max(
-          runner.readabilityHalo.material.opacity,
-          0.16 + this.selectionPulse * 0.28 + Math.sin(this.menuT * 2.1) * 0.025
-        );
+        // Reuse the gameplay foliage reveal purely for the menu's selected subject.
+        this.game.world.grassUniforms.uReveal.value.set(runner.x, runner.z, 0, 1);
+        this.game.lighting.addLight(runner.x, 2.5, runner.z, runner.lightColor, 2.2, 6);
         runner.superRing.material.opacity = Math.max(
-          runner.superRing.material.opacity,
-          0.035 + this.selectionPulse * 0.18
+          runner.superRing.material.opacity, 0.08 + this.selectionPulse * 0.3
         );
       }
       return;
@@ -150,82 +156,67 @@ export class FrontEndDirector {
     }
 
     const candidates = this.game.brawlers.filter((runner) => runner.alive && runner.def.id === this.selected);
-    this.cachedRunner = candidates[0] || this.game.brawlers.find((runner) => runner.alive) || null;
+    this.cachedRunner = candidates.find((runner) => !runner.inBush) || candidates[0] || null;
     return this.cachedRunner;
-  }
-
-  nearestRival(runner) {
-    if (!runner) return null;
-    let best = null;
-    let bestDistance = Infinity;
-    for (const other of this.game.brawlers) {
-      if (other === runner || !other.alive) continue;
-      const dx = other.x - runner.x;
-      const dz = other.z - runner.z;
-      const distance = dx * dx + dz * dz;
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = other;
-      }
-    }
-    return best;
   }
 
   updateMenuCamera(dt, camera, focus, aspectScale) {
     const runner = this.findSelectedRunner();
     if (!runner) return false;
 
-    const rival = this.nearestRival(runner);
     const shot = frontEndShotAt(this.menuT);
     document.body.dataset.menuShot = shot.id;
+    const wide = shot.id === 'wide';
+    const profile = shot.id === 'profile';
+    const distance = (wide ? 13 : profile ? 7.6 : 6.2) * mix(1, aspectScale, 0.22);
+    let height = wide ? 11 : profile ? 5.7 : 4.8;
+    const desiredFov = wide ? 34 : 29;
 
-    let focusX = runner.x;
-    let focusZ = runner.z;
-    let focusY = 0.9;
-    let distance = 9.2;
-    let height = 7.25;
-    let angle = runner.aimAngle + Math.PI * 0.72 + this.menuT * 0.075;
-
-    if (shot.id === 'profile') {
-      distance = 11.4;
-      height = 8.35;
-      focusY = 0.78;
-      angle = runner.aimAngle + Math.PI * 0.51 + Math.sin(this.menuT * 0.44) * 0.18;
-    } else if (shot.id === 'wide') {
-      distance = 18.2;
-      height = 13.5;
-      focusY = 0.38;
-      if (rival) {
-        focusX = mix(runner.x, rival.x, 0.25);
-        focusZ = mix(runner.z, rival.z, 0.25);
-        angle = Math.atan2(rival.x - runner.x, rival.z - runner.z) + 0.92;
+    // Hold a stable front/three-quarter angle instead of chasing every AI aim turn.
+    // Check only the near sightline: distant walls are below this elevated camera.
+    this.angleCheckT -= dt;
+    if (this.menuAngle === null || this.angleCheckT <= 0) {
+      const preferred = this.menuAngle ?? runner.aimAngle + 0.4;
+      let bestAngle = preferred;
+      let bestScore = -Infinity;
+      for (const offset of [0, 0.65, -0.65, 1.3, -1.3, Math.PI]) {
+        const angle = preferred + offset;
+        const dx = Math.sin(angle), dz = Math.cos(angle);
+        const hit = this.game.world.raycast(runner.x, runner.z, runner.x + dx * 3.4, runner.z + dz * 3.4);
+        const clear = hit ? hit.dist : 3.4;
+        const score = clear - Math.abs(offset) * 0.35;
+        if (score > bestScore) { bestAngle = angle; bestScore = score; }
       }
+      this.menuAngle = bestAngle;
+      this.angleCheckT = 0.8;
     }
+    const angle = this.menuAngle + (profile ? 0.22 : 0);
+    const closeCover = this.game.world.raycast(runner.x, runner.z,
+      runner.x + Math.sin(angle) * 2.2, runner.z + Math.cos(angle) * 2.2);
+    if (closeCover) height += 2.3;
 
-    distance *= mix(1, aspectScale, 0.54);
-    height *= mix(1, aspectScale, 0.42);
-
-    const x = focusX + Math.sin(angle) * distance * 0.68;
-    const z = focusZ + Math.cos(angle) * distance;
-
-    focus.x = damp(focus.x, focusX, 3.3, dt);
-    focus.z = damp(focus.z, focusZ, 3.3, dt);
-
-    camera.position.x = damp(camera.position.x, x, 3.05, dt);
-    camera.position.y = damp(camera.position.y, height, 3.05, dt);
-    camera.position.z = damp(camera.position.z, z, 3.05, dt);
-
-    const desiredFov =
-      shot.id === 'hero' ? 27.5 :
-      shot.id === 'profile' ? 29.25 :
-      32.25;
-
-    if (Math.abs(camera.fov - desiredFov) > 0.001) {
-      camera.fov = damp(camera.fov, desiredFov, 2.6, dt);
-      camera.updateProjectionMatrix();
+    // A selection is an arcade camera cut, not a long fly-through across the arena.
+    if (this.snapMenuCamera) {
+      focus.x = runner.x;
+      focus.z = runner.z;
+      camera.position.set(runner.x + Math.sin(angle) * distance, height, runner.z + Math.cos(angle) * distance);
+      camera.fov = desiredFov;
+      this.snapMenuCamera = false;
     }
+    focus.x = damp(focus.x, runner.x, 7, dt);
+    focus.z = damp(focus.z, runner.z, 7, dt);
+    camera.position.x = damp(camera.position.x, runner.x + Math.sin(angle) * distance, 5, dt);
+    camera.position.y = damp(camera.position.y, height, 4, dt);
+    camera.position.z = damp(camera.position.z, runner.z + Math.cos(angle) * distance, 5, dt);
+    camera.fov = damp(camera.fov, desiredFov, 3, dt);
 
-    camera.lookAt(focus.x, focusY, focus.z);
+    // Off-axis composition leaves the left for identity and the bottom for controls.
+    const width = window.innerWidth, viewportHeight = window.innerHeight;
+    const portrait = width <= 600 && viewportHeight > width;
+    const tablet = width <= 1050 && viewportHeight > 600 && !portrait;
+    camera.setViewOffset(width, viewportHeight, -width * (wide ? 0.08 : 0.16),
+      viewportHeight * (portrait ? 0.24 : tablet ? 0.19 : 0.09), width, viewportHeight);
+    camera.lookAt(focus.x, 0.85, focus.z);
     return true;
   }
 

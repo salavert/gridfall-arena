@@ -1,10 +1,25 @@
 // Deterministic CPU portrait of the actual model. The game uses WebGL PBR.
-// Run: node scripts/render-volt.mjs [output.png]
+// Run: node scripts/render-volt.mjs [output.png] [volt|spectre|hex|colossus]
 import * as T from 'three';
 import { createVoltModel } from '../src/volt/model.js';
-import { writeFile } from 'node:fs/promises';
+import { RUNNERS } from '../src/game/config.js';
+import { runInNewContext } from 'node:vm';
+import { readFile, writeFile } from 'node:fs/promises';
 import { deflateSync } from 'node:zlib';
-const size = 900, model = createVoltModel(T), triangles = [];
+// Optional second argument renders another runner from the shipping model factory.
+const runnerId = process.argv[3] || 'volt';
+if (!RUNNERS[runnerId]) throw new Error(`Unknown runner: ${runnerId}`);
+const graphics = {
+  xr: T.SphereGeometry, pr: T.CapsuleGeometry, hr: T.CylinderGeometry,
+  fr: T.BoxGeometry, Sr: T.TorusGeometry, br: T.RingGeometry,
+  mr: T.CircleGeometry, Nr: T.MeshStandardMaterial, Tn: T.MeshBasicMaterial,
+  ut: T.Group, Ln: T.Mesh, H: T.Vector3, createVoltModel,
+};
+const factory = runInNewContext(
+  await readFile(new URL('../public/runtime/Runner.js', import.meta.url), 'utf8') + '; uu;', graphics
+);
+const size = runnerId === 'volt' ? 900 : 384;
+const model = factory(RUNNERS[runnerId], 0), triangles = [];
 model.root.updateMatrixWorld(true);
 model.root.traverse(mesh => {
   if (!mesh.isMesh) return;
