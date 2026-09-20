@@ -25,7 +25,7 @@ Official sources:
 
 License: CC0 1.0. No paid pack is required by this repository and no purchase has been made.
 
-The official UBC page describes six base proportions and 20 hairstyles. The free Standard archive is a partial release; the public Standard copy inspected for this decision contains the Superhero male/female bases plus a subset of hairstyles. We therefore treat UBC as a **rig/topology reference**, not as finished Carla/Bruno art.
+The official UBC page describes six base proportions and 20 hairstyles. The free Standard archive is a partial release overall, but a pinned public copy of the current Standard base-character files confirms that the six advertised base meshes are present, including `Teen_Female_FullBody` and `Teen_Male_FullBody`. The Teen meshes share the exact 65-joint UBC rig and measure 15,136 and 13,992 triangles respectively. We use those Teen bodies for the first visual pilot while still treating UBC as a **rig/topology reference**, not finished Carla/Bruno art.
 
 ## KayKit comparison
 
@@ -93,3 +93,19 @@ When assets are finally vendored:
 - record archive hash, acquisition date and transformations;
 - keep large source packs out of the runtime tree;
 - commit only the prepared shipping GLBs and the small provenance files required to reproduce them.
+
+
+## Automated visual pilot
+
+`.github/workflows/character-pilots.yml` builds temporary Carla and Bruno candidate GLBs and 640px previews from pinned public copies of the Quaternius CC0 Standard assets. These are evaluation artifacts, retained for seven days, not production assets.
+
+The pilot intentionally proves the expensive parts before changing gameplay:
+- Teen head/proportions on the shared UBC rig;
+- compatible Ranger outfit;
+- rigid hair/head socket composition;
+- Carla blonde fringe streak and stowed whip handle;
+- Bruno football identity prop;
+- shared Idle/Walk/Jog clips plus tiny character-specific authored actions;
+- exact 65-joint validation after export.
+
+Promotion is manual. A pilot is not copied into `public/` until its preview is visually accepted.
