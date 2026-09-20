@@ -45,3 +45,39 @@ export function feedbackBands(intensity) {
     heavy: smoothstep(0.68, 1, intensity),
   };
 }
+
+
+export function movementPose({ speed, maxSpeed, forwardSpeed, sideSpeed, angularSpeed, braking = 0 }) {
+  const move = clamp(speed / Math.max(maxSpeed, 0.001), 0, 1);
+  const forward = clamp(forwardSpeed / Math.max(maxSpeed, 0.001), -1, 1);
+  const side = clamp(sideSpeed / Math.max(maxSpeed, 0.001), -1, 1);
+  return {
+    move,
+    forwardLean: forward * 0.095 + braking * 0.12,
+    sideLean: side * 0.13 + clamp(angularSpeed * 0.012, -0.13, 0.13) * move,
+    torsoTwist: side * 0.12 + clamp(angularSpeed * 0.009, -0.1, 0.1),
+    stride: (0.68 + move * 0.24) * move,
+  };
+}
+
+export function attackIntentPose(kind, progress, isSuper = false) {
+  const p = smoothstep(0, 1, clamp(progress, 0, 1));
+  const superMul = isSuper ? 1.28 : 1;
+  const melee = kind === 'melee' || kind === 'leap';
+  const lob = kind === 'lob';
+  return {
+    plant: p * (melee ? 0.22 : lob ? 0.15 : 0.11) * superMul,
+    windup: p * (melee ? 0.34 : lob ? 0.24 : 0.18) * superMul,
+    twist: p * (melee ? 0.18 : lob ? -0.12 : 0.08) * superMul,
+    crouch: p * (melee ? 0.14 : isSuper ? 0.1 : 0.055),
+  };
+}
+
+export function hitReactionPose(relativeAngle, heavy = false) {
+  const force = heavy ? 1 : 0.62;
+  return {
+    pitch: clamp(-Math.cos(relativeAngle) * 0.18 * force, -0.2, 0.2),
+    tilt: clamp(Math.sin(relativeAngle) * 0.28 * force, -0.28, 0.28),
+    twist: clamp(Math.sin(relativeAngle) * 0.2 * force, -0.2, 0.2),
+  };
+}
