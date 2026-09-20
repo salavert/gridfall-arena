@@ -202,7 +202,10 @@ export function runFrame(game, now) {
     }
     const freeze = Math.min(Math.max(game.hitStop || 0, 0), Math.max(raw, 0));
     if (freeze > 0) game.hitStop = Math.max(0, game.hitStop - freeze);
-    const simRaw = Math.max(0, raw - freeze);
+    const slowActive = (game.slowMoT || 0) > 0;
+    const slowScale = slowActive ? Math.min(Math.max(game.slowMoScale || 0.5, 0.2), 1) : 1;
+    if (slowActive) game.slowMoT = Math.max(0, game.slowMoT - Math.max(raw, 0));
+    const simRaw = Math.max(0, raw - freeze) * slowScale;
     game.fixedClock.advance(simRaw, dt => {
       for (let i = 0; i < game.simSteps; i++) {
         if (game.hitStop > 0) return;
