@@ -10,8 +10,12 @@ import { shootVolt, controlVoltDesktop, controlVoltTouch, updateVoltCharge, reac
 
 // Load the actual production engine and its bundled Three classes, excluding
 // only browser bootstrap. No second Three instance or alternate runner model.
-let source = await readFile(new URL('../src/runtime.js', import.meta.url),'utf8');
-source = source.slice(0,source.indexOf(';function ud('))+';export {fu,Vu,Bc,VOLT_GRAPHICS};';
+const runtimeBootstrap = await readFile(new URL('../src/runtime.js', import.meta.url),'utf8');
+const importPrefix = runtimeBootstrap.slice(0, runtimeBootstrap.indexOf('const productionDependencies'));
+const kernel = await readFile(new URL('../public/runtime/kernel.js', import.meta.url),'utf8');
+const subsystemNames = ["Renderer.js","Lighting.js","Arena.js","Runner.js","Combat.js","Effects.js","Void.js","AI.js","Input.js","Hud.js","Game.js"];
+const splitRuntime = await Promise.all(subsystemNames.map(name => readFile(new URL('../public/runtime/' + name, import.meta.url),'utf8')));
+let source = importPrefix + '\n' + kernel + '\n' + splitRuntime.join('\n') + '\n;const fu=globalThis.fu,Vu=globalThis.Vu;export {fu,Vu,Bc,VOLT_GRAPHICS};';
 source = source.replace(/from '(\.\/[^']+)'/g,(_,p)=>`from '${new URL('../src/'+p.slice(2),import.meta.url)}'`).replace(/import '\.\/[^']+\.css';/g,'');
 globalThis.window = { addEventListener(){}, devicePixelRatio:1 };
 globalThis.document = { getElementById(){return null;} };

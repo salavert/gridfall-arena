@@ -5,7 +5,10 @@ import { RULES, RUNNERS } from '../src/game/config.js';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const runtime = await readFile(new URL('../src/runtime.js', import.meta.url), 'utf8');
-const production = html + '\n' + runtime;
+const subsystemNames = ["Renderer.js","Lighting.js","Arena.js","Runner.js","Combat.js","Effects.js","Void.js","AI.js","Input.js","Hud.js","Game.js"];
+const kernel = await readFile(new URL('../public/runtime/kernel.js', import.meta.url), 'utf8');
+const subsystems = await Promise.all(subsystemNames.map(name => readFile(new URL('../public/runtime/' + name, import.meta.url), 'utf8')));
+const production = [html, runtime, kernel, ...subsystems].join('\n');
 
 test('v0.3 ships the complete Gridfall identity and roster', () => {
   for (const marker of [
@@ -50,5 +53,17 @@ test('production page retains the full rendering and game systems', () => {
 test('production HTML delegates runtime to a module', () => {
   assert.match(html, /src=["']\.\/src\/runtime\.js["']/);
   assert.ok(html.length < 120000, 'index.html should remain a document/bootstrap, not the game engine');
-  assert.ok(runtime.length > 100000, 'production runtime should live outside index.html');
+  assert.ok(runtime.length < 15000, 'runtime.js should remain a bootstrap/orchestrator');
+  assert.ok(kernel.length > 500000, 'embedded Three kernel should be isolated from game systems');
+  assert.equal(subsystems.length, 11);
+});
+
+
+test('production systems are physically separated from the bootstrap', () => {
+  for (const name of ['Renderer.js','Lighting.js','Arena.js','Runner.js','Combat.js','Effects.js','AI.js','Input.js','Hud.js','Game.js']) {
+    assert.ok(subsystemNames.includes(name), `missing production subsystem file: ${name}`);
+  }
+  for (const marker of ['globalThis.Zl=class','globalThis.fu=class','globalThis.Su=class','globalThis.Nu=class','globalThis.Vu=class','globalThis.Yu=class','globalThis.ld=class']) {
+    assert.ok(production.includes(marker), `missing extracted class marker: ${marker}`);
+  }
 });
