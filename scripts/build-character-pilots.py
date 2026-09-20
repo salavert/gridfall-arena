@@ -381,7 +381,7 @@ def setup_preview_camera(character_objects, output: Path, name: str):
     scene.render.filepath = str(output / f'{name}-preview.png')
     scene.render.film_transparent = False
     scene.world.color = (.015, .02, .035)
-    scene.view_settings.look = 'Medium High Contrast'
+    scene.view_settings.look = 'AgX - Medium High Contrast'
     bpy.ops.render.render(write_still=True)
 
 

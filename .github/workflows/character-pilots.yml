@@ -68,7 +68,7 @@ jobs:
 
       - name: Build pilot characters
         run: |
-          blender --background --python scripts/build-character-pilots.py --             --source-dir .character-source             --output-dir artifacts/character-pilots
+          blender --background --python-exit-code 1 --python scripts/build-character-pilots.py -- --source-dir .character-source --output-dir artifacts/character-pilots
 
       - name: Inspect generated GLBs
         run: |
