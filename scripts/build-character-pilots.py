@@ -265,6 +265,16 @@ def attach_ball_preview(rig):
     ball.location = (0, -.09, -.07)
 
 
+def canonical_action_name(name: str) -> str:
+    # Blender's glTF importer may preserve source armature prefixes such as
+    # "Armature|Armature|Idle_Loop". Three.js exposes the canonical clip name
+    # from the GLB, so normalize imports back to the final segment.
+    canonical = name.split('|')[-1].strip()
+    if len(canonical) > 4 and canonical[-4] == '.' and canonical[-3:].isdigit():
+        canonical = canonical[:-4]
+    return canonical or name
+
+
 def collect_actions_from_library(path: Path, wanted: tuple[str, ...]):
     before_actions = set(bpy.data.actions.keys())
     imported = import_asset(path)
@@ -272,11 +282,21 @@ def collect_actions_from_library(path: Path, wanted: tuple[str, ...]):
         action for name, action in bpy.data.actions.items()
         if name not in before_actions
     ]
-    actions = {action.name: action for action in imported_actions if action.name in wanted}
+
+    actions = {}
+    for action in imported_actions:
+        canonical = canonical_action_name(action.name)
+        if canonical in wanted and canonical not in actions:
+            action.name = canonical
+            actions[canonical] = action
 
     missing = [name for name in wanted if name not in actions]
     if missing:
-        raise RuntimeError(f'Animation library is missing required clips: {missing}')
+        available = sorted(canonical_action_name(action.name) for action in imported_actions)
+        raise RuntimeError(
+            f'Animation library is missing required clips: {missing}; '
+            f'available clips: {available}'
+        )
 
     # Animation-library render meshes/rig are never exported.
     for obj in imported:
@@ -284,8 +304,9 @@ def collect_actions_from_library(path: Path, wanted: tuple[str, ...]):
 
     # Do not let the full Universal Animation Library leak into the shipping
     # pilot. Keep only the small locomotion subset referenced by NLA tracks.
+    keep = set(actions.values())
     for action in imported_actions:
-        if action.name not in actions:
+        if action not in keep:
             bpy.data.actions.remove(action)
 
     return actions
