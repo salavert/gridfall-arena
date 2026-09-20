@@ -2,110 +2,136 @@
 
 ## Decision
 
-Gridfall will use the **Quaternius Universal Base Characters (UBC) humanoid rig as the character-authoring contract**, while keeping the current procedural runners as a runtime fallback until replacement GLBs pass the visual and technical gate.
+Gridfall now uses **Synty Sidekick Modern Civilians** as the intended visual base for human runners.
 
-KayKit remains a useful reference for low-cost animation and material discipline, but it is not the visual base for Carla and Bruno.
+The previous Quaternius/Blender pilot proved the GLB runtime path, but producing bespoke characters by retargeting and rebuilding third-party meshes was consuming more engineering time than it was worth. That experiment is retired. The procedural characters remain the runtime fallback until licensed Sidekick exports are available locally.
 
-## Why Quaternius
+Official product:
+- https://syntystore.com/products/modern-civilians-sidekick-modular-characters
 
-Measured from a public copy of the free Standard UBC glTF files:
+Official licence:
+- https://syntystore.com/pages/one-time-purchase-licence
+- https://syntystore.com/community/faq
 
-| Asset | Triangles | Joints | Meshes | Materials | Embedded animations |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Superhero Female | 15,060 | 65 | 3 | 3 | 0 |
-| Superhero Male | 14,318 | 65 | 3 | 3 | 0 |
+## Why Sidekick
 
-The 65-joint rig includes the complete torso, arms, legs, feet and articulated fingers. Its bone naming is also shared by current Quaternius modular outfits and the Universal Animation Library.
+Sidekick already provides the expensive pieces we were rebuilding:
+- modular rigged human parts;
+- Unity Humanoid / Mecanim compatibility;
+- body blend shapes;
+- facial blend shapes;
+- hair and clothing designed to mix cleanly;
+- a Character Creator that can bake a completed character into a single optimized prefab.
 
-Official sources:
-- https://quaternius.com/packs/universalbasecharacters.html
-- https://quaternius.itch.io/universal-base-characters
-- https://quaternius.itch.io/universal-animation-library
-- https://quaternius.itch.io/modular-character-outfits-fantasy
+Gridfall does **not** need a runtime character creator. We author Carla and Bruno in Sidekick, bake each one, export one runtime character per runner, then let Three.js own only animation playback and rendering.
 
-License: CC0 1.0. No paid pack is required by this repository and no purchase has been made.
+## Asset handling
 
-The official UBC page describes six base proportions and 20 hairstyles. The free Standard archive is a partial release overall, but a pinned public copy of the current Standard base-character files confirms that the six advertised base meshes are present, including `Teen_Female_FullBody` and `Teen_Male_FullBody`. The Teen meshes share the exact 65-joint UBC rig and measure 15,136 and 13,992 triangles respectively. We use those Teen bodies for the first visual pilot while still treating UBC as a **rig/topology reference**, not finished Carla/Bruno art.
+Synty assets are licensed assets, not repository source.
 
-## KayKit comparison
+Never commit:
+- Synty Unity packages;
+- Sidekick source meshes;
+- baked Sidekick FBX/GLB files;
+- textures copied from Sidekick.
 
-KayKit Adventurers is extremely efficient and already bundles its characters with a large clip library. Its shared `Rig_Medium` is only 23 joints in widely used implementations, its Adventurers GLBs are roughly 3.6 MB each before optimization, and KayKit's separate Character Animations pack advertises 161 humanoid animations.
+Local source directory:
 
-That is excellent for prototypes. It is not the best identity foundation for Gridfall because the visual style is more recognisable as stock KayKit and gives us less facial/hair articulation to push toward the Carla and Bruno reference sheets.
+```
+.licensed/sidekick/
+└── input/
+    ├── carla.glb
+    └── bruno.glb
+```
+
+Local runtime directory:
+
+```
+public/assets/licensed/sidekick/
+├── carla.glb
+└── bruno.glb
+```
+
+Both locations are gitignored.
+
+Install locally:
+
+```sh
+npm run character:install-sidekick
+```
+
+Or from another export directory:
+
+```sh
+npm run character:install-sidekick -- /absolute/path/to/exports
+```
+
+The installer validates the humanoid skeleton before copying anything into the Vite public tree.
+
+## Carla authoring brief
+
+Use Sidekick Modern Civilians as the base.
+
+Visual targets:
+- younger, shorter silhouette than an adult NPC;
+- slightly stylized head proportions;
+- straight warm light-brown hair;
+- unmistakable blonde streak at the front fringe;
+- practical casual/ranch-influenced clothing;
+- whip is a separate prop attached to the right hand;
+- Border Collie is a separate actor, not part of Carla's skeleton.
+
+Keep the face readable from the gameplay camera. Do not chase realistic micro-detail.
+
+## Bruno authoring brief
+
+Visual targets:
+- young sporty silhouette;
+- short messy brown hair;
+- casual/sport clothing;
+- football remains a separate gameplay prop;
+- strong leg silhouette for kick anticipation;
+- energetic facial expression.
 
 ## Runtime contract
 
-The canonical contract lives in:
+The canonical code lives in:
 - `src/characters/characterRig.js`
 - `src/characters/characterManifest.js`
 - `src/characters/CharacterAssetLoader.js`
 
-Important constraints:
-- simulation owns position, facing, collision and hit timing;
-- imported meshes are presentation only;
-- root motion is disabled;
-- feet are authored at Y=0;
-- the UBC joint names remain stable;
-- Carla and Bruno get original character-specific attack/super clips;
-- a failed or missing GLB must fall back to the existing procedural runner.
+Rules:
+- simulation owns position, collision, facing and hit timing;
+- imported characters are presentation only;
+- root motion stays disabled;
+- characters normalize to the existing gameplay footprint;
+- the loader validates semantic humanoid roles rather than a vendor-specific joint count;
+- right-hand and foot sockets are resolved semantically;
+- failed/missing licensed assets fall back to the current procedural runner.
 
-The current production runtime still uses the extracted classic Three.js kernel. The rigged character loader deliberately imports from the existing npm `three@0.180.0` dependency and is **not wired into production yet**. Do not mix the new loader into `Runner.js` until the first pilot GLB has been visually validated and the scene bridge has been exercised.
-
-## Asset budget
-
-First shipping target per character:
-- <= 18k triangles;
-- <= 4 materials;
-- <= 6 textures;
-- <= 1024 px texture dimension;
-- <= 2.5 MB transferred GLB after optimization;
-- one 65-joint skin;
-- no cameras or lights;
-- no root motion.
-
-The target gameplay height is 1.42 scene units so a rigged replacement stays close to the visual footprint of the current runner rather than introducing a hidden gameplay-scale change.
-
-## Authoring order
-
-1. Build one neutral `base-child` pilot on the UBC skeleton.
-2. Validate silhouette and movement in Gridfall before making character-specific variants.
-3. Author Carla from that base: straight/light brown hair, blonde fringe streak, ranch-influenced outfit, whip socket on `hand_r`.
-4. Author Bruno from the same base: short messy hair, sporty/ranch outfit, ball as a separate gameplay prop.
-5. The Border Collie is a separate actor and separate rig. It is not added to Carla's human skeleton.
-6. Only after Carla and Bruno are convincing do we migrate the other runners.
-
-## Local inspection
-
-Inspect any candidate without Blender:
+Inspect an exported candidate:
 
 ```sh
-npm run character:inspect -- /path/to/character.glb
-npm run character:inspect -- /path/to/character.glb --verify-ubc
+npm run character:inspect -- /path/to/carla.glb --verify-sidekick
 ```
 
-This reports triangle/material/skin/animation counts and verifies the exact UBC joint contract.
+## Web distribution gate
 
-## Source handling
+Do not publish Sidekick GLBs through GitHub Pages yet.
 
-When assets are finally vendored:
-- download from the official creator page, not a mirror;
-- preserve the upstream license beside the source record;
-- record archive hash, acquisition date and transformations;
-- keep large source packs out of the runtime tree;
-- commit only the prepared shipping GLBs and the small provenance files required to reproduce them.
+Synty's current licence allows licensed assets to be incorporated into videogames, but its Sidekick FAQ also says baked-down character assets must not be redistributed outside the working team. A browser game necessarily delivers its render assets to the client, so we need written confirmation from Synty that our intended web delivery is compliant before putting Sidekick GLBs in a public Pages artifact.
 
+Until then:
+- local development with licensed exports is allowed by our repository policy;
+- licensed files stay out of Git;
+- the public build keeps the procedural fallback.
 
-## Automated visual pilot
+## Promotion gate
 
-`.github/workflows/character-pilots.yml` builds temporary Carla and Bruno candidate GLBs and 640px previews from pinned public copies of the Quaternius CC0 Standard assets. These are evaluation artifacts, retained for seven days, not production assets.
-
-The pilot intentionally proves the expensive parts before changing gameplay:
-- Teen head/proportions on the shared UBC rig;
-- compatible Ranger outfit;
-- rigid hair/head socket composition;
-- Carla blonde fringe streak and stowed whip handle;
-- Bruno football identity prop;
-- shared Idle/Walk/Jog clips plus tiny character-specific authored actions;
-- exact 65-joint validation after export.
-
-Promotion is manual. A pilot is not copied into `public/` until its preview is visually accepted.
+A Sidekick Carla/Bruno export is accepted only when:
+1. its silhouette is clearly better than the procedural model;
+2. `--verify-sidekick` passes;
+3. the gameplay camera shows no clipping or scale regression;
+4. basic locomotion and attack poses deform cleanly;
+5. the model stays within the budget in `characterManifest.js`;
+6. web distribution has been cleared for this deployment model.

@@ -1,11 +1,22 @@
-import { UBC_JOINTS, UBC_SOCKETS } from './characterRig.js';
+import {
+  SIDEKICK_REQUIRED_ROLES,
+  SIDEKICK_SOCKETS,
+} from './characterRig.js';
 
 export const CHARACTER_PIPELINE = Object.freeze({
-  family: 'gridfall-humanoid-v1',
-  sourceRig: 'Quaternius Universal Base Characters',
-  sourceLicense: 'CC0-1.0',
-  sourceUrl: 'https://quaternius.com/packs/universalbasecharacters.html',
-  animationSourceUrl: 'https://quaternius.com/packs/universalanimationlibrary.html',
+  family: 'syntysidekick-v1',
+  source: Object.freeze({
+    vendor: 'Synty Studios',
+    product: 'Sidekick Modern Civilians',
+    url: 'https://syntystore.com/products/modern-civilians-sidekick-modular-characters',
+    licence: 'Synty One-Time Purchase Licence',
+  }),
+  assetPolicy: Object.freeze({
+    licensedSourceDir: '.licensed/sidekick',
+    runtimeDir: 'public/assets/licensed/sidekick',
+    commitLicensedAssets: false,
+    webDistribution: 'pending-vendor-confirmation',
+  }),
   runtime: Object.freeze({
     units: 'meters',
     upAxis: '+Y',
@@ -17,42 +28,35 @@ export const CHARACTER_PIPELINE = Object.freeze({
     fallback: 'procedural-runner',
   }),
   rig: Object.freeze({
-    jointCount: UBC_JOINTS.length,
-    joints: UBC_JOINTS,
-    sockets: UBC_SOCKETS,
+    standard: 'Unity Humanoid / Mecanim compatible',
+    requiredRoles: SIDEKICK_REQUIRED_ROLES,
+    sockets: SIDEKICK_SOCKETS,
   }),
   shippingBudget: Object.freeze({
-    maxTriangles: 18000,
-    maxMaterials: 4,
-    maxTextures: 6,
+    maxTriangles: 50000,
+    maxMaterials: 6,
+    maxTextures: 8,
     maxTextureDimension: 1024,
-    maxCharacterBytes: 2500000,
-  }),
-  commonClips: Object.freeze({
-    idle: 'Idle_Loop',
-    jog: 'Jog_Fwd_Loop',
-    sprint: 'Sprint_Loop',
-    hurt: null,
-    defeat: null,
+    maxCharacterBytes: 5000000,
   }),
   characters: Object.freeze({
     carla: Object.freeze({
-      runtimeAsset: null,
-      status: 'authoring-required',
-      body: 'female-child',
+      runtimeAsset: './assets/licensed/sidekick/carla.glb',
+      status: 'awaiting-licensed-export',
+      silhouette: 'young-short-slim',
       hair: 'straight-light-brown-with-blonde-fringe-streak',
       rightHandProp: 'whip',
       companion: 'border-collie',
-      customClips: Object.freeze(['attack_whip', 'super_collie_command', 'victory']),
+      expressionProfile: 'confident-friendly',
     }),
     bruno: Object.freeze({
-      runtimeAsset: null,
-      status: 'authoring-required',
-      body: 'male-child',
+      runtimeAsset: './assets/licensed/sidekick/bruno.glb',
+      status: 'awaiting-licensed-export',
+      silhouette: 'young-average-sporty',
       hair: 'short-messy-brown',
       rightHandProp: null,
       companion: null,
-      customClips: Object.freeze(['attack_kick', 'super_power_kick', 'victory']),
+      expressionProfile: 'energetic-competitive',
     }),
   }),
 });

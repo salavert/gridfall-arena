@@ -2,7 +2,13 @@ import { AnimationMixer, Box3, Vector3 } from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
-import { assertRigJointNames, collectNamedBones, scaleForTargetHeight } from './characterRig.js';
+import {
+  assertHumanoidRig,
+  assertRigJointNames,
+  collectNamedBones,
+  resolveHumanoidRig,
+  scaleForTargetHeight,
+} from './characterRig.js';
 
 export class CharacterAssetLoader {
   constructor({ loader, logger = console } = {}) {
@@ -27,6 +33,7 @@ export class CharacterAssetLoader {
 
   async instantiate(url, {
     requiredJoints,
+    requiredHumanoidRoles,
     targetHeight,
     yaw = 0,
     castShadow = true,
@@ -34,7 +41,11 @@ export class CharacterAssetLoader {
     const template = await this.preload(url);
     const root = cloneSkeleton(template.scene);
     const bones = collectNamedBones(root);
-    if (requiredJoints) assertRigJointNames(Object.keys(bones), requiredJoints);
+    const boneNames = Object.keys(bones);
+
+    if (requiredJoints) assertRigJointNames(boneNames, requiredJoints);
+    if (requiredHumanoidRoles) assertHumanoidRig(boneNames, requiredHumanoidRoles);
+    const humanoidBones = resolveHumanoidRig(boneNames);
 
     root.rotation.y = yaw;
     root.updateMatrixWorld(true);
@@ -64,6 +75,7 @@ export class CharacterAssetLoader {
     return {
       root,
       bones,
+      humanoidBones,
       clips,
       mixer,
       materials,

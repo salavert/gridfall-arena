@@ -1,80 +1,102 @@
-export const UBC_JOINTS = Object.freeze([
-  "root",
-  "pelvis",
-  "spine_01",
-  "spine_02",
-  "spine_03",
-  "neck_01",
-  "Head",
-  "clavicle_l",
-  "upperarm_l",
-  "lowerarm_l",
-  "hand_l",
-  "index_01_l",
-  "index_02_l",
-  "index_03_l",
-  "index_04_leaf_l",
-  "middle_01_l",
-  "middle_02_l",
-  "middle_03_l",
-  "middle_04_leaf_l",
-  "pinky_01_l",
-  "pinky_02_l",
-  "pinky_03_l",
-  "pinky_04_leaf_l",
-  "ring_01_l",
-  "ring_02_l",
-  "ring_03_l",
-  "ring_04_leaf_l",
-  "thumb_01_l",
-  "thumb_02_l",
-  "thumb_03_l",
-  "thumb_04_leaf_l",
-  "clavicle_r",
-  "upperarm_r",
-  "lowerarm_r",
-  "hand_r",
-  "index_01_r",
-  "index_02_r",
-  "index_03_r",
-  "index_04_leaf_r",
-  "middle_01_r",
-  "middle_02_r",
-  "middle_03_r",
-  "middle_04_leaf_r",
-  "pinky_01_r",
-  "pinky_02_r",
-  "pinky_03_r",
-  "pinky_04_leaf_r",
-  "ring_01_r",
-  "ring_02_r",
-  "ring_03_r",
-  "ring_04_leaf_r",
-  "thumb_01_r",
-  "thumb_02_r",
-  "thumb_03_r",
-  "thumb_04_leaf_r",
-  "thigh_l",
-  "calf_l",
-  "foot_l",
-  "ball_l",
-  "ball_leaf_l",
-  "thigh_r",
-  "calf_r",
-  "foot_r",
-  "ball_r",
-  "ball_leaf_r"
-]);
-
-export const UBC_SOCKETS = Object.freeze({
-  head: 'Head',
-  leftHand: 'hand_l',
-  rightHand: 'hand_r',
-  leftFoot: 'foot_l',
-  rightFoot: 'foot_r',
+export const SIDEKICK_HUMANOID_ROLES = Object.freeze({
+  hips: Object.freeze(['hips', 'pelvis']),
+  spine: Object.freeze(['spine', 'spine01', 'spine1']),
+  chest: Object.freeze(['chest', 'upperchest', 'spine02', 'spine2', 'spine03', 'spine3']),
+  neck: Object.freeze(['neck', 'neck01', 'neck1']),
+  head: Object.freeze(['head']),
+  leftShoulder: Object.freeze(['leftshoulder', 'shoulderl', 'claviclel']),
+  leftUpperArm: Object.freeze(['leftupperarm', 'upperarml', 'upperarml']),
+  leftLowerArm: Object.freeze(['leftlowerarm', 'lowerarml', 'forearml']),
+  leftHand: Object.freeze(['lefthand', 'handl']),
+  rightShoulder: Object.freeze(['rightshoulder', 'shoulderr', 'clavicler']),
+  rightUpperArm: Object.freeze(['rightupperarm', 'upperarmr', 'upperarmr']),
+  rightLowerArm: Object.freeze(['rightlowerarm', 'lowerarmr', 'forearmr']),
+  rightHand: Object.freeze(['righthand', 'handr']),
+  leftUpperLeg: Object.freeze(['leftupperleg', 'thighl', 'uplegl']),
+  leftLowerLeg: Object.freeze(['leftlowerleg', 'calfl', 'shinl']),
+  leftFoot: Object.freeze(['leftfoot', 'footl']),
+  rightUpperLeg: Object.freeze(['rightupperleg', 'thighr', 'uplegr']),
+  rightLowerLeg: Object.freeze(['rightlowerleg', 'calfr', 'shinr']),
+  rightFoot: Object.freeze(['rightfoot', 'footr']),
 });
 
-export function diffRigJointNames(names, expected = UBC_JOINTS) {
+export const SIDEKICK_REQUIRED_ROLES = Object.freeze([
+  'hips',
+  'spine',
+  'head',
+  'leftUpperArm',
+  'leftLowerArm',
+  'leftHand',
+  'rightUpperArm',
+  'rightLowerArm',
+  'rightHand',
+  'leftUpperLeg',
+  'leftLowerLeg',
+  'leftFoot',
+  'rightUpperLeg',
+  'rightLowerLeg',
+  'rightFoot',
+]);
+
+export const SIDEKICK_SOCKETS = Object.freeze({
+  head: 'head',
+  leftHand: 'leftHand',
+  rightHand: 'rightHand',
+  leftFoot: 'leftFoot',
+  rightFoot: 'rightFoot',
+});
+
+export function normalizeBoneName(name) {
+  return String(name ?? '')
+    .split(/[|:/]/)
+    .at(-1)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function findBoneName(names, aliases) {
+  const normalized = names.map(name => [name, normalizeBoneName(name)]);
+  for (const alias of aliases) {
+    const exact = normalized.find(([, value]) => value === alias);
+    if (exact) return exact[0];
+  }
+  for (const alias of aliases) {
+    const suffix = normalized.find(([, value]) => value.endsWith(alias));
+    if (suffix) return suffix[0];
+  }
+  return null;
+}
+
+export function resolveHumanoidRig(names, roles = SIDEKICK_HUMANOID_ROLES) {
+  const result = {};
+  for (const [role, aliases] of Object.entries(roles)) {
+    result[role] = findBoneName(names, aliases);
+  }
+  return result;
+}
+
+export function missingHumanoidRoles(
+  names,
+  requiredRoles = SIDEKICK_REQUIRED_ROLES,
+  roles = SIDEKICK_HUMANOID_ROLES,
+) {
+  const resolved = resolveHumanoidRig(names, roles);
+  return requiredRoles.filter(role => !resolved[role]);
+}
+
+export function assertHumanoidRig(
+  names,
+  requiredRoles = SIDEKICK_REQUIRED_ROLES,
+  roles = SIDEKICK_HUMANOID_ROLES,
+) {
+  const missing = missingHumanoidRoles(names, requiredRoles, roles);
+  if (missing.length) {
+    throw new Error(`Character rig is missing humanoid roles: ${missing.join(', ')}`);
+  }
+  return resolveHumanoidRig(names, roles);
+}
+
+export function diffRigJointNames(names, expected) {
   const actual = new Set(names);
   const wanted = new Set(expected);
   return {
@@ -83,7 +105,7 @@ export function diffRigJointNames(names, expected = UBC_JOINTS) {
   };
 }
 
-export function assertRigJointNames(names, expected = UBC_JOINTS) {
+export function assertRigJointNames(names, expected) {
   const { missing } = diffRigJointNames(names, expected);
   if (missing.length) {
     throw new Error(`Character rig is missing required joints: ${missing.join(', ')}`);

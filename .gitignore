@@ -3,3 +3,6 @@ dist/
 .DS_Store
 *.log
 
+# Licensed third-party character assets. Never commit Synty source or baked models.
+.licensed/
+public/assets/licensed/

@@ -11,7 +11,8 @@
     "test": "node --test",
     "check": "npm test && npm run build",
     "portrait": "node scripts/render-volt.mjs",
-    "character:inspect": "node scripts/inspect-character.mjs"
+    "character:inspect": "node scripts/inspect-character.mjs",
+    "character:install-sidekick": "node scripts/install-sidekick-local.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

@@ -1,45 +1,80 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  UBC_JOINTS,
-  UBC_SOCKETS,
-  assertRigJointNames,
-  diffRigJointNames,
+  SIDEKICK_REQUIRED_ROLES,
+  SIDEKICK_SOCKETS,
+  assertHumanoidRig,
+  missingHumanoidRoles,
+  normalizeBoneName,
+  resolveHumanoidRig,
   scaleForTargetHeight,
 } from '../src/characters/characterRig.js';
 import { CHARACTER_PIPELINE } from '../src/characters/characterManifest.js';
 
-test('UBC rig contract is stable and contains every gameplay socket', () => {
-  assert.equal(UBC_JOINTS.length, 65);
-  assert.equal(new Set(UBC_JOINTS).size, UBC_JOINTS.length);
-  for (const socket of Object.values(UBC_SOCKETS)) assert.ok(UBC_JOINTS.includes(socket));
-  assert.doesNotThrow(() => assertRigJointNames(UBC_JOINTS));
+const UNITY_HUMANOID = [
+  'Root',
+  'Hips',
+  'Spine',
+  'Chest',
+  'Neck',
+  'Head',
+  'LeftShoulder',
+  'LeftUpperArm',
+  'LeftLowerArm',
+  'LeftHand',
+  'RightShoulder',
+  'RightUpperArm',
+  'RightLowerArm',
+  'RightHand',
+  'LeftUpperLeg',
+  'LeftLowerLeg',
+  'LeftFoot',
+  'RightUpperLeg',
+  'RightLowerLeg',
+  'RightFoot',
+];
+
+test('Sidekick rig validation resolves Unity Humanoid roles', () => {
+  assert.deepEqual(missingHumanoidRoles(UNITY_HUMANOID), []);
+  assert.doesNotThrow(() => assertHumanoidRig(UNITY_HUMANOID));
+  const resolved = resolveHumanoidRig(UNITY_HUMANOID);
+  for (const socketRole of Object.values(SIDEKICK_SOCKETS)) {
+    assert.ok(resolved[socketRole]);
+  }
 });
 
-test('rig validation reports missing and extra joints without accepting a partial skeleton', () => {
-  const names = UBC_JOINTS.filter(name => name !== 'hand_r').concat('custom_socket');
-  const diff = diffRigJointNames(names);
-  assert.deepEqual(diff.missing, ['hand_r']);
-  assert.deepEqual(diff.extra, ['custom_socket']);
-  assert.throws(() => assertRigJointNames(names), /hand_r/);
+test('Sidekick rig resolver tolerates namespaces and vendor prefixes', () => {
+  const names = UNITY_HUMANOID.map(name => `SK_Modern:Character_${name}`);
+  const resolved = resolveHumanoidRig(names);
+  assert.equal(resolved.hips, 'SK_Modern:Character_Hips');
+  assert.equal(resolved.rightHand, 'SK_Modern:Character_RightHand');
+  assert.equal(normalizeBoneName('SK_Modern:Character_RightHand'), 'characterrighthand');
+  assert.deepEqual(missingHumanoidRoles(names), []);
 });
 
-test('character height normalization is explicit and bounded by positive inputs', () => {
+test('Sidekick rig validation rejects incomplete deformation skeletons', () => {
+  const names = UNITY_HUMANOID.filter(name => name !== 'RightHand');
+  assert.deepEqual(missingHumanoidRoles(names), ['rightHand']);
+  assert.throws(() => assertHumanoidRig(names), /rightHand/);
+});
+
+test('character height normalization remains presentation-only and explicit', () => {
   assert.equal(scaleForTargetHeight(2, 1.5), 0.75);
   assert.throws(() => scaleForTargetHeight(0, 1.5), RangeError);
   assert.throws(() => scaleForTargetHeight(1.5, 0), RangeError);
 });
 
-test('Carla and Bruno remain authoring targets with procedural fallback until GLBs exist', () => {
+test('Sidekick assets stay licensed, local and outside the public repository', () => {
+  assert.equal(CHARACTER_PIPELINE.family, 'syntysidekick-v1');
+  assert.equal(CHARACTER_PIPELINE.assetPolicy.commitLicensedAssets, false);
+  assert.equal(CHARACTER_PIPELINE.assetPolicy.webDistribution, 'pending-vendor-confirmation');
   assert.equal(CHARACTER_PIPELINE.runtime.fallback, 'procedural-runner');
-  assert.equal(CHARACTER_PIPELINE.characters.carla.runtimeAsset, null);
-  assert.equal(CHARACTER_PIPELINE.characters.bruno.runtimeAsset, null);
   assert.equal(CHARACTER_PIPELINE.characters.carla.rightHandProp, 'whip');
   assert.equal(CHARACTER_PIPELINE.characters.carla.companion, 'border-collie');
-  assert.ok(CHARACTER_PIPELINE.characters.bruno.customClips.includes('super_power_kick'));
+  assert.ok(SIDEKICK_REQUIRED_ROLES.includes('hips'));
 });
 
-test('rigged character loader is available without adding another Three dependency', async () => {
+test('rigged character loader remains available through the existing Three dependency', async () => {
   const module = await import('../src/characters/CharacterAssetLoader.js');
   assert.equal(typeof module.CharacterAssetLoader, 'function');
 });

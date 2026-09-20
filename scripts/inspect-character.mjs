@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
-import { UBC_JOINTS, diffRigJointNames } from '../src/characters/characterRig.js';
+import {
+  SIDEKICK_REQUIRED_ROLES,
+  assertHumanoidRig,
+  missingHumanoidRoles,
+  resolveHumanoidRig,
+} from '../src/characters/characterRig.js';
 
 function readDocument(filename) {
   const bytes = readFileSync(filename);
@@ -35,35 +40,58 @@ function triangleCount(document) {
   return total;
 }
 
+function morphTargetCount(document) {
+  let count = 0;
+  for (const mesh of document.meshes ?? []) {
+    for (const primitive of mesh.primitives ?? []) {
+      count = Math.max(count, primitive.targets?.length ?? 0);
+    }
+  }
+  return count;
+}
+
 function inspect(document) {
   const jointIndexes = new Set((document.skins ?? []).flatMap(skin => skin.joints ?? []));
-  const joints = [...jointIndexes].map(index => document.nodes?.[index]?.name).filter(Boolean);
+  const jointNames = [...jointIndexes]
+    .map(index => document.nodes?.[index]?.name)
+    .filter(Boolean);
+  const humanoidRig = resolveHumanoidRig(jointNames);
   return {
     nodes: document.nodes?.length ?? 0,
     meshes: document.meshes?.length ?? 0,
     skins: document.skins?.length ?? 0,
-    joints: joints.length,
+    joints: jointNames.length,
     materials: document.materials?.length ?? 0,
     textures: document.textures?.length ?? 0,
     animations: (document.animations ?? []).map(animation => animation.name ?? ''),
+    morphTargets: morphTargetCount(document),
     triangles: triangleCount(document),
-    jointNames: joints,
-    ubcRig: diffRigJointNames(joints),
+    jointNames,
+    humanoidRig,
+    missingHumanoidRoles: missingHumanoidRoles(jointNames),
   };
 }
 
 const filename = process.argv[2];
 if (!filename) {
-  console.error('Usage: node scripts/inspect-character.mjs <character.glb|character.gltf> [--verify-ubc]');
+  console.error(
+    'Usage: node scripts/inspect-character.mjs <character.glb|character.gltf> [--verify-sidekick]',
+  );
   process.exit(2);
 }
+
 const result = inspect(readDocument(resolve(filename)));
 console.log(JSON.stringify(result, null, 2));
 
-if (process.argv.includes('--verify-ubc')) {
-  if (result.ubcRig.missing.length) process.exit(1);
-  if (result.joints !== UBC_JOINTS.length) {
-    console.error(`Expected ${UBC_JOINTS.length} UBC joints, found ${result.joints}`);
+if (process.argv.includes('--verify-sidekick')) {
+  if (result.skins < 1) {
+    console.error('Sidekick candidate must contain at least one skin');
+    process.exit(1);
+  }
+  try {
+    assertHumanoidRig(result.jointNames, SIDEKICK_REQUIRED_ROLES);
+  } catch (error) {
+    console.error(error.message);
     process.exit(1);
   }
 }
