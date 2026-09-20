@@ -89,6 +89,7 @@ def normalize_height(objects: list[bpy.types.Object], height: float = TARGET_HEI
 def flat_material(name: str, color: tuple[float, float, float, float], roughness: float = .72):
     material = bpy.data.materials.get(name) or bpy.data.materials.new(name)
     material.use_nodes = True
+    material.diffuse_color = color
     principled = material.node_tree.nodes.get('Principled BSDF')
     principled.inputs['Base Color'].default_value = color
     principled.inputs['Roughness'].default_value = roughness
@@ -121,6 +122,26 @@ def clear_texture_inputs(material: bpy.types.Material, keep_base_color: bool = T
     for image in list(bpy.data.images):
         if image.users == 0:
             bpy.data.images.remove(image)
+
+
+def prune_outfit_variants(objects):
+    # The Ranger GLBs are modular wardrobes. Exporting every optional arm,
+    # hood and pauldron at once creates duplicate silhouettes. The pilot keeps
+    # one clean ranch-adventure outfit and drops medieval/alternate variants.
+    drop_tokens = (
+        'acc_pauldron',
+        'acc_pauldrons',
+        'arms_bracer',
+        'head_hood',
+        'body_belt_2',
+    )
+    kept = []
+    for obj in objects:
+        if obj.type == 'MESH' and any(token in obj.name.lower() for token in drop_tokens):
+            bpy.data.objects.remove(obj, do_unlink=True)
+            continue
+        kept.append(obj)
+    return kept
 
 
 def assign_outfit_palette(objects, *, body, accent, dark, boots):
@@ -157,13 +178,36 @@ def strip_armature(objects, keep=None):
             bpy.data.objects.remove(obj, do_unlink=True)
 
 
-def keep_head_region(obj: bpy.types.Object, ratio: float = .785) -> None:
-    bpy.context.view_layer.objects.active = obj
-    lo, hi = world_bounds([obj])
-    cutoff = lo.z + (hi.z - lo.z) * ratio
+def keep_head_region(obj: bpy.types.Object, min_weight: float = .05) -> None:
+    # A height cut is not safe for a T-pose: shoulders and horizontal arms can
+    # sit at the same height as the face. Keep only geometry actually weighted
+    # to the head/neck bones so the extracted Teen head cannot retain spare
+    # body or arm islands.
+    wanted_groups = {'Head', 'neck_01'}
+    group_ids = {
+        group.index for group in obj.vertex_groups
+        if group.name in wanted_groups
+    }
+    if not group_ids:
+        raise RuntimeError(
+            f'{obj.name} has no Head/neck_01 vertex groups; cannot extract head safely'
+        )
+
+    keep_indices = set()
+    for vertex in obj.data.vertices:
+        if any(
+            assignment.group in group_ids and assignment.weight >= min_weight
+            for assignment in vertex.groups
+        ):
+            keep_indices.add(vertex.index)
+
+    if not keep_indices:
+        raise RuntimeError(f'{obj.name} head extraction removed every vertex')
+
     bm = bmesh.new()
     bm.from_mesh(obj.data)
-    doomed = [v for v in bm.verts if (obj.matrix_world @ v.co).z < cutoff]
+    bm.verts.ensure_lookup_table()
+    doomed = [vertex for vertex in bm.verts if vertex.index not in keep_indices]
     bmesh.ops.delete(bm, geom=doomed, context='VERTS')
     bm.to_mesh(obj.data)
     bm.free()
@@ -186,14 +230,22 @@ def extract_teen_head(base_path: Path, rig, hair_color):
     meshes = mesh_objects(imported)
     body = max(meshes, key=lambda obj: len(obj.data.vertices))
     keep_head_region(body)
+
+    skin = flat_material('GF_Skin', (.78, .52, .38, 1), .82)
+    eyes = flat_material('GF_Eyes', (.055, .028, .018, 1), .48)
+    brows = flat_material('GF_Brows', hair_color, .84)
+
     for obj in meshes:
+        name = obj.name.lower()
+        material = skin
+        if 'eye' in name and 'brow' not in name:
+            material = eyes
+        elif 'brow' in name:
+            material = brows
+        obj.data.materials.clear()
+        obj.data.materials.append(material)
         make_rigid(obj, rig, 'Head')
-        if obj is body:
-            for material in obj.data.materials:
-                clear_texture_inputs(material, keep_base_color=True)
-        else:
-            for material in obj.data.materials:
-                clear_texture_inputs(material, keep_base_color=True)
+
     strip_armature(imported)
     return meshes
 
@@ -332,6 +384,27 @@ def stash_actions(rig, actions: dict[str, bpy.types.Action]):
         strip.action_frame_end = action.frame_range[1]
 
 
+def set_preview_pose(rig, name: str = 'Idle_Loop') -> None:
+    if not rig.animation_data:
+        return
+    chosen = None
+    for track in rig.animation_data.nla_tracks:
+        track.mute = track.name != name
+        if track.name == name:
+            chosen = track
+    if chosen and chosen.strips:
+        strip = chosen.strips[0]
+        frame = int(min(strip.frame_end - 1, strip.frame_start + 10))
+        bpy.context.scene.frame_set(max(int(strip.frame_start), frame))
+
+
+def restore_export_tracks(rig) -> None:
+    if rig.animation_data:
+        for track in rig.animation_data.nla_tracks:
+            track.mute = False
+    bpy.context.scene.frame_set(0)
+
+
 def author_action(rig, name: str, keys: list[tuple[int, dict[str, tuple[float, float, float]]]]):
     action = bpy.data.actions.new(name)
     rig.animation_data_create()
@@ -411,8 +484,10 @@ def setup_preview_camera(character_objects, output: Path, name: str):
     rim.data.energy = 650
     rim.data.size = 2.6
 
-    bpy.ops.object.camera_add(location=(2.45, -3.9, 2.15))
+    bpy.ops.object.camera_add(location=(2.0, -3.0, 1.65))
     camera = bpy.context.object
+    camera.data.type = 'ORTHO'
+    camera.data.ortho_scale = max(1.72, (hi.z - lo.z) * 1.28)
     bpy.context.scene.camera = camera
 
     def look_at(obj, target):
@@ -469,6 +544,7 @@ def build_character(source: Path, output: Path, character: str):
     outfit = import_asset(outfit_file)
     rig = find_armature(outfit)
     rig.name = 'GridfallRig'
+    outfit = prune_outfit_variants(outfit)
     assign_outfit_palette(outfit, **palette)
 
     # Head and hair are rigid attachments. This avoids silently combining
@@ -490,7 +566,14 @@ def build_character(source: Path, output: Path, character: str):
     custom_actions(rig, character)
 
     all_character_objects = [obj for obj in bpy.context.scene.objects]
+    # Height is a geometry contract, not an animation-frame accident.
+    for track in rig.animation_data.nla_tracks:
+        track.mute = True
+    rig.data.pose_position = 'REST'
+    bpy.context.view_layer.update()
     normalize_height(all_character_objects, TARGET_HEIGHT)
+    rig.data.pose_position = 'POSE'
+    set_preview_pose(rig)
 
     output.mkdir(parents=True, exist_ok=True)
     # Render before export. Preview-only scene objects are removed afterwards.
@@ -499,6 +582,7 @@ def build_character(source: Path, output: Path, character: str):
         if obj.name.startswith(('Plane', 'Area', 'Camera')):
             bpy.data.objects.remove(obj, do_unlink=True)
 
+    restore_export_tracks(rig)
     bpy.ops.object.select_all(action='SELECT')
     # Export only NLA-backed actions belonging to this pilot. The source
     # library contains many more clips and exporting them defeats the purpose
