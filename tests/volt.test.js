@@ -30,7 +30,7 @@ function fixture(id='volt', isPlayer=true) {
   const game={ state:'playing', elapsed:10, scene:new G.Group(),
     combat:{spawnBullet(...args){bullets.push(args);}},
     effects:{muzzle(){},flash(){},burst(){},footDust(){},leaves(){}},
-    audio:{ctx:null,play(){}},shake(){},
+    audio:{ctx:null,play(){}},shake(){},attackBeat(){},
     world:{resolveCircle(){},isBushAt(){return false;},hasLineOfSight(){return true;},isWalkable(){return true;},toTile(x){return Math.floor(x);}},
     gas:{active:false},
     input:{fire:false,firePressed:false,fireReleased:false,consumeSuperRelease(){return false;},axis(){return{x:0,z:0};},sticks:{aim:{id:null},super:{id:null}},takeShots(){return[];}},
