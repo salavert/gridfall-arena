@@ -5,7 +5,7 @@ import { MENU_SHOTS, frontEndShotAt, resultTreatment } from '../src/presentation
 
 test('front-end camera shots cycle deterministically', () => {
   assert.equal(frontEndShotAt(0).id, 'hero');
-  assert.equal(frontEndShotAt(MENU_SHOTS[0].duration + 0.01).id, 'duel');
+  assert.equal(frontEndShotAt(MENU_SHOTS[0].duration + 0.01).id, 'profile');
   assert.equal(frontEndShotAt(MENU_SHOTS[0].duration + MENU_SHOTS[1].duration + 0.01).id, 'wide');
 
   const total = MENU_SHOTS.reduce((sum, shot) => sum + shot.duration, 0);

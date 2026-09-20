@@ -3,9 +3,9 @@ const damp = (current, target, speed, dt) => current + (target - current) * (1 -
 const mix = (a, b, t) => a + (b - a) * t;
 
 export const MENU_SHOTS = Object.freeze([
-  Object.freeze({ id: 'hero', duration: 5.8 }),
-  Object.freeze({ id: 'duel', duration: 4.4 }),
-  Object.freeze({ id: 'wide', duration: 4.8 }),
+  Object.freeze({ id: 'hero', duration: 7.5 }),
+  Object.freeze({ id: 'profile', duration: 4.4 }),
+  Object.freeze({ id: 'wide', duration: 3.6 }),
 ]);
 
 export function frontEndShotAt(seconds) {
@@ -177,45 +177,49 @@ export class FrontEndDirector {
 
     const rival = this.nearestRival(runner);
     const shot = frontEndShotAt(this.menuT);
-    this.menuAngle += dt * (shot.id === 'hero' ? 0.075 : 0.045);
+    document.body.dataset.menuShot = shot.id;
 
     let focusX = runner.x;
     let focusZ = runner.z;
-    let height = 8.4;
-    let distance = 10.5;
-    let focusY = 0.72;
-    let angle = this.menuAngle;
+    let focusY = 0.9;
+    let distance = 9.2;
+    let height = 7.25;
+    let angle = runner.aimAngle + Math.PI * 0.72 + this.menuT * 0.075;
 
-    if (shot.id === 'duel' && rival) {
-      focusX = (runner.x + rival.x) * 0.5;
-      focusZ = (runner.z + rival.z) * 0.5;
-      const dx = rival.x - runner.x;
-      const dz = rival.z - runner.z;
-      angle = Math.atan2(dx, dz) + 0.82;
-      distance = 15.5;
-      height = 11.7;
-      focusY = 0.46;
+    if (shot.id === 'profile') {
+      distance = 11.4;
+      height = 8.35;
+      focusY = 0.78;
+      angle = runner.aimAngle + Math.PI * 0.51 + Math.sin(this.menuT * 0.44) * 0.18;
     } else if (shot.id === 'wide') {
-      distance = 22.5;
-      height = 18.2;
-      focusY = 0.18;
+      distance = 18.2;
+      height = 13.5;
+      focusY = 0.38;
+      if (rival) {
+        focusX = mix(runner.x, rival.x, 0.25);
+        focusZ = mix(runner.z, rival.z, 0.25);
+        angle = Math.atan2(rival.x - runner.x, rival.z - runner.z) + 0.92;
+      }
     }
 
-    const scale = mix(1, aspectScale, 0.65);
-    distance *= scale;
-    height *= scale;
+    distance *= mix(1, aspectScale, 0.54);
+    height *= mix(1, aspectScale, 0.42);
 
-    const x = focusX + Math.sin(angle) * distance * 0.72;
+    const x = focusX + Math.sin(angle) * distance * 0.68;
     const z = focusZ + Math.cos(angle) * distance;
-    const blend = 1 - Math.exp(-dt * 2.2);
 
-    focus.x = damp(focus.x, focusX, 2.8, dt);
-    focus.z = damp(focus.z, focusZ, 2.8, dt);
-    camera.position.x += (x - camera.position.x) * blend;
-    camera.position.y += (height - camera.position.y) * blend;
-    camera.position.z += (z - camera.position.z) * blend;
+    focus.x = damp(focus.x, focusX, 3.3, dt);
+    focus.z = damp(focus.z, focusZ, 3.3, dt);
 
-    const desiredFov = shot.id === 'hero' ? 29.5 : shot.id === 'duel' ? 31 : 32.5;
+    camera.position.x = damp(camera.position.x, x, 3.05, dt);
+    camera.position.y = damp(camera.position.y, height, 3.05, dt);
+    camera.position.z = damp(camera.position.z, z, 3.05, dt);
+
+    const desiredFov =
+      shot.id === 'hero' ? 27.5 :
+      shot.id === 'profile' ? 29.25 :
+      32.25;
+
     if (Math.abs(camera.fov - desiredFov) > 0.001) {
       camera.fov = damp(camera.fov, desiredFov, 2.6, dt);
       camera.updateProjectionMatrix();

@@ -51,31 +51,44 @@
     </div>
 
     <div id="menu" class="screen menu-screen">
-      <div class="menu-brand">
-        <div class="menu-eyebrow">LAST RUNNER ONLINE // LIVE GRID</div>
-        <h1 id="title">GRIDFALL<span>ARENA</span></h1>
-        <div id="tagline">Harvest cores. Break cover. Outlive the collapsing grid.</div>
-        <div id="version">VERSION 0.3.0 · CINEMATIC FRONT END</div>
+      <div class="menu-top">
+        <div class="menu-brand">
+          <div class="menu-eyebrow">LIVE COMBAT SHOWCASE</div>
+          <h1 id="title">GRIDFALL<span>ARENA</span></h1>
+          <p id="tagline">Harvest. Fight. Survive.</p>
+        </div>
       </div>
 
-      <section class="hero-panel" aria-live="polite">
-        <div class="hero-kicker" id="hero-kicker">RUNNER // 01</div>
-        <div class="hero-name" id="hero-name">VOLT</div>
-        <div class="hero-role" id="hero-role"></div>
-        <div class="hero-blurb" id="hero-blurb"></div>
-        <div class="hero-stats">
-          <div class="hero-stat"><span>HEALTH</span><i><b id="hero-health"></b></i></div>
-          <div class="hero-stat"><span>RANGE</span><i><b id="hero-range"></b></i></div>
-          <div class="hero-stat"><span>DAMAGE</span><i><b id="hero-damage"></b></i></div>
-        </div>
-      </section>
+      <div class="menu-stage" aria-hidden="true">
+        <div class="menu-stage-frame"></div>
+        <div class="menu-stage-glow"></div>
+        <div class="menu-stage-index" id="hero-kicker">RUNNER // 01</div>
+      </div>
 
-      <div class="menu-controls">
-        <div id="cards" aria-label="Runner selection"></div>
-        <div class="menu-cta">
+      <div class="menu-bottom">
+        <section class="hero-copy" aria-live="polite">
+          <div class="hero-name-row">
+            <h2 class="hero-name" id="hero-name">VOLT</h2>
+            <div class="hero-role" id="hero-role"></div>
+          </div>
+          <p class="hero-blurb" id="hero-blurb"></p>
+
+          <div class="hero-stats">
+            <div class="hero-stat"><span>HEALTH</span><i><b id="hero-health"></b></i></div>
+            <div class="hero-stat"><span>RANGE</span><i><b id="hero-range"></b></i></div>
+            <div class="hero-stat"><span>DAMAGE</span><i><b id="hero-damage"></b></i></div>
+          </div>
+        </section>
+
+        <div class="menu-actions">
           <button class="big-btn" id="play">ENTER THE GRID</button>
-          <div id="menu-hint"><span class="for-keys">Choose a runner while the arena stays live in the background</span><span class="for-touch">Choose a runner · left thumb moves · right thumb aims</span></div>
+          <div id="menu-hint"><span class="for-keys">Pick a runner, then drop straight into the live arena</span><span class="for-touch">Pick a runner · left thumb moves · right thumb aims</span></div>
         </div>
+      </div>
+
+      <div class="roster-wrap">
+        <div class="roster-label">SELECT RUNNER</div>
+        <div id="cards" aria-label="Runner selection"></div>
       </div>
     </div>
 
