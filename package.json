@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "node --test",
     "check": "npm test && npm run build",
-    "portrait": "node scripts/render-volt.mjs"
+    "portrait": "node scripts/render-volt.mjs",
+    "character:inspect": "node scripts/inspect-character.mjs"
   },
   "dependencies": {
     "three": "0.180.0"
