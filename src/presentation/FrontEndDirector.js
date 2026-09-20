@@ -168,8 +168,8 @@ export class FrontEndDirector {
     document.body.dataset.menuShot = shot.id;
     const wide = shot.id === 'wide';
     const profile = shot.id === 'profile';
-    const distance = (wide ? 13 : profile ? 7.6 : 6.2) * mix(1, aspectScale, 0.22);
-    let height = wide ? 11 : profile ? 5.7 : 4.8;
+    const distance = (wide ? 13 : profile ? 9.6 : 8.2) * mix(1, aspectScale, 0.22);
+    let height = wide ? 11 : profile ? 7.1 : 6.2;
     const desiredFov = wide ? 34 : 29;
 
     // Hold a stable front/three-quarter angle instead of chasing every AI aim turn.

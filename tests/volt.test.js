@@ -128,3 +128,28 @@ test('charge power clamps and paused held trigger cannot fire on resume',()=>{
   const t=new ChargeTrigger();t.step({down:true,allowed:true,dt:.6});t.cancel(true);
   assert.equal(t.step({down:false,released:true,allowed:true,dt:.01}),null);
 });
+
+
+test('live menu suppresses hit flashes and low-health flicker for every runner; gameplay retains them', () => {
+  for (const id of Object.keys(roster)) {
+    const { game, player } = fixture(id, false);
+    game.hud = { floatText() {} };
+    game.effects.damageWear = () => {};
+    game.state = 'menu';
+    const hp = player.hp;
+    player.takeDamage(300, null);
+    assert.equal(player.hp, hp - 300, `${id}: menu combat still applies damage`);
+    assert.equal(player.flash, 1);
+    player.animate(1 / 60, false);
+    assert.ok(player.model.flashMats.every(m => m.emissive.r === 0 && m.emissive.g === 0 && m.emissive.b === 0), `${id}: no menu hit flash`);
+    assert.equal(player.readabilityHalo.material.opacity, 0, `${id}: no damage halo pulse`);
+    player.hp = player.maxHp * .15;
+    player.animate(1 / 60, false);
+    assert.ok(player.model.flashMats.every(m => m.emissive.r === 0), `${id}: no low-health menu flicker`);
+    game.state = 'playing';
+    player.animate(1 / 60, false);
+    assert.ok(player.model.flashMats.every(m => m.emissive.r >= 1), `${id}: gameplay hit flash preserved`);
+    assert.ok(player.readabilityHalo.material.opacity > 0, `${id}: gameplay damage halo preserved`);
+    player.dispose();
+  }
+});
