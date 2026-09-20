@@ -94,3 +94,32 @@ test('each super leaves a distinct semantic scar and temporary field', async () 
   assert.ok(hex.zoneLife > volt.zoneLife);
   assert.ok(colossus.size > volt.size);
 });
+
+
+test('arena zones provide distinct material and atmosphere identities', async () => {
+  const { arenaZoneProfile } = await import('../src/presentation/combat.js');
+  assert.equal(arenaZoneProfile(-10.5, -10.5).surface, 'dirt');
+  assert.equal(arenaZoneProfile(10.5, -10.5).surface, 'metal');
+  assert.equal(arenaZoneProfile(-10.5, 10.5).surface, 'stone');
+  assert.equal(arenaZoneProfile(10.5, 10.5).surface, 'foliage');
+  assert.equal(arenaZoneProfile(0, 0).surface, 'ground');
+});
+
+test('contact shadows stay grounded and compress as height increases', async () => {
+  const { contactShadowPresentation } = await import('../src/presentation/combat.js');
+  const grounded = contactShadowPresentation({ speed: 3, maxSpeed: 3, height: 0, sideSpeed: 0.5, anticipation: 0.6 });
+  const airborne = contactShadowPresentation({ speed: 3, maxSpeed: 3, height: 2.8, sideSpeed: 0.5, anticipation: 0.6 });
+  assert.ok(grounded.opacity > airborne.opacity);
+  assert.ok(grounded.length > airborne.length);
+  assert.ok(grounded.width > airborne.width);
+});
+
+test('incoming projectile threat rejects misses and prioritizes imminent supers', async () => {
+  const { incomingProjectileThreat } = await import('../src/presentation/combat.js');
+  assert.equal(incomingProjectileThreat({ along: -1, cross: 0.1, speed: 15 }), null);
+  assert.equal(incomingProjectileThreat({ along: 5, cross: 2, speed: 15 }), null);
+  const normal = incomingProjectileThreat({ along: 5, cross: 0.35, speed: 15 });
+  const superShot = incomingProjectileThreat({ along: 4, cross: 0.25, speed: 15, isSuper: true });
+  assert.ok(normal);
+  assert.ok(superShot.priority > normal.priority);
+});

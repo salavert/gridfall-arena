@@ -130,3 +130,53 @@ export function superScarProfile(id, power = 1) {
     zoneScale: (id === 'spectre' ? 0.85 : id === 'colossus' ? 1.2 : id === 'hex' ? 1.05 : 0.9) * p,
   };
 }
+
+
+const ARENA_ZONES = [
+  { id: 'dust', x: -10.5, z: -10.5, surface: 'dirt', fog: 0x6f5742, near: 44, far: 94 },
+  { id: 'tech', x: 10.5, z: -10.5, surface: 'metal', fog: 0x18334a, near: 48, far: 104 },
+  { id: 'stone', x: -10.5, z: 10.5, surface: 'stone', fog: 0x322b46, near: 46, far: 98 },
+  { id: 'garden', x: 10.5, z: 10.5, surface: 'foliage', fog: 0x263b31, near: 42, far: 92 },
+];
+
+export function arenaZoneProfile(x, z) {
+  let best = null;
+  let bestDistance = Infinity;
+  for (const zone of ARENA_ZONES) {
+    const distance = Math.hypot(x - zone.x, z - zone.z);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = zone;
+    }
+  }
+  if (!best || bestDistance > 8.2) {
+    return { id: 'neutral', surface: 'ground', fog: 0x0b0e1a, near: 54, far: 118, blend: 0 };
+  }
+  const blend = clamp(1 - (bestDistance - 4.6) / 3.6, 0, 1);
+  return { ...best, blend };
+}
+
+export function contactShadowPresentation({ speed, maxSpeed, height = 0, sideSpeed = 0, anticipation = 0 }) {
+  const move = clamp(speed / Math.max(maxSpeed, 0.001), 0, 1);
+  const airborne = clamp(1 - height / 3.4, 0.16, 1);
+  const side = clamp(Math.abs(sideSpeed) / Math.max(maxSpeed, 0.001), 0, 1);
+  return {
+    opacity: (0.12 + 0.1 * airborne) * airborne,
+    length: (1.05 + move * 0.28 + anticipation * 0.08) * airborne,
+    width: (0.74 - move * 0.08 + side * 0.08) * airborne,
+    offset: move * 0.08 * airborne,
+  };
+}
+
+export function incomingProjectileThreat({ along, cross, speed, isSuper = false }) {
+  if (along <= 0 || speed <= 0) return null;
+  const time = along / speed;
+  if (time > 1.15 || cross > 1.2) return null;
+  const proximity = clamp(1 - cross / 1.2, 0, 1);
+  const urgency = clamp(1 - time / 1.15, 0, 1);
+  return {
+    time,
+    priority: urgency * 0.7 + proximity * 0.3 + (isSuper ? 0.35 : 0),
+    opacity: clamp(0.42 + urgency * 0.45 + (isSuper ? 0.13 : 0), 0, 1),
+  };
+}
