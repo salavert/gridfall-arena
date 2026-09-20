@@ -198,3 +198,56 @@ export function hazardPhase(time, offset = 0, type = 'steam') {
     activeProgress: active ? phase / activeWindow : 0,
   };
 }
+
+
+const LOCOMOTION = Object.freeze({
+  volt: Object.freeze({ stepRate: 3.75, stride: 1.08, bob: 0.9, lean: 1.18, twist: 1.08, dust: 0.9, hover: 0 }),
+  spectre: Object.freeze({ stepRate: 3.05, stride: 0.82, bob: 0.48, lean: 0.72, twist: 0.62, dust: 0.55, hover: 0 }),
+  hex: Object.freeze({ stepRate: 2.65, stride: 0.62, bob: 0.35, lean: 0.82, twist: 1.15, dust: 0.42, hover: 0.035 }),
+  colossus: Object.freeze({ stepRate: 2.5, stride: 1.18, bob: 1.35, lean: 0.58, twist: 0.48, dust: 1.35, hover: 0 }),
+});
+
+export function runnerLocomotionProfile(id) {
+  return LOCOMOTION[id] || LOCOMOTION.volt;
+}
+
+export function damageWearPresentation(hpRatio, id = 'volt', time = 0) {
+  const severity = clamp((0.42 - hpRatio) / 0.32, 0, 1);
+  const heavy = id === 'colossus' ? 0.78 : id === 'spectre' ? 1.08 : 1;
+  return {
+    severity,
+    smokeRate: severity * severity * (id === 'colossus' ? 2.2 : 1.6),
+    sparkRate: severity * (id === 'volt' ? 3.2 : id === 'spectre' ? 1.2 : 1.8),
+    posture: severity * (id === 'colossus' ? 0.06 : id === 'spectre' ? 0.11 : 0.09),
+    jitter: severity * (0.012 + 0.006 * Math.sin(time * 13 + (id.length || 1))) * heavy,
+    flicker: severity * (0.45 + 0.55 * (0.5 + 0.5 * Math.sin(time * (id === 'volt' ? 19 : 11)))),
+  };
+}
+
+export function projectilePresentation(id, isSuper, progress = 0, melee = false) {
+  const superMul = isSuper ? 1.22 : 1;
+  if (id === 'spectre') return { shapeX: 0.42, shapeY: 0.42, shapeZ: 2.15 * superMul, pulseHz: 34, pulse: 0.025, trailGap: isSuper ? 0.012 : 0.019, trailScale: isSuper ? 1.45 : 0.92, light: 0.72, wake: 0.18 };
+  if (id === 'volt') return { shapeX: 1.22, shapeY: 1.12, shapeZ: (0.88 + progress * 0.12) * superMul, pulseHz: 21, pulse: 0.09, trailGap: isSuper ? 0.019 : 0.03, trailScale: isSuper ? 2.2 : 1.7, light: 1.18, wake: 0.32 };
+  if (id === 'colossus' || melee) return { shapeX: 1.5, shapeY: 0.72, shapeZ: 0.68 * superMul, pulseHz: 12, pulse: 0.035, trailGap: 0.05, trailScale: 1.75, light: 0.62, wake: 0.5 };
+  return { shapeX: 1, shapeY: 1, shapeZ: 1.15 * superMul, pulseHz: 17, pulse: 0.055, trailGap: 0.035, trailScale: 1.4, light: 1, wake: 0.25 };
+}
+
+export function superBuildPresentation(id, progress) {
+  const p = smoothstep(0, 1, clamp(progress, 0, 1));
+  const profiles = {
+    volt: { crouch: 0.07, weapon: 0.055, halo: 0.2, twist: 0.05, pulse: 15, light: 2.8 },
+    spectre: { crouch: 0.035, weapon: 0.025, halo: 0.14, twist: -0.03, pulse: 22, light: 2.3 },
+    hex: { crouch: 0.09, weapon: 0.04, halo: 0.24, twist: -0.11, pulse: 10, light: 3.1 },
+    colossus: { crouch: 0.16, weapon: 0.02, halo: 0.18, twist: 0.08, pulse: 7, light: 3.5 },
+  };
+  const b = profiles[id] || profiles.volt;
+  return {
+    progress: p,
+    crouch: b.crouch * p,
+    weaponScale: 1 + b.weapon * p,
+    halo: b.halo * p,
+    twist: b.twist * p,
+    pulseHz: b.pulse,
+    light: b.light * p,
+  };
+}

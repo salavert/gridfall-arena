@@ -107,6 +107,13 @@ export function controlVoltDesktop(game, dt, aim) {
 }
 
 export function controlVoltTouch(game, dt) {
+  const player = game.player;
+  if (player) {
+    const stick = game.input.sticks?.super;
+    const aimingSuper = !!(stick && stick.id !== null && stick.moved && player.superReady);
+    player.anticipationSuper = aimingSuper;
+    if (aimingSuper) player.anticipation = Math.max(player.anticipation || 0, 0.72);
+  }
   const p = game.player, input = game.input, trigger = triggerFor(game);
   const axis = input.axis(); p.moveX = axis.x; p.moveZ = axis.z;
   const stick = input.sticks.aim;

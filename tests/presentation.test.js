@@ -136,3 +136,45 @@ test('hazards expose warning before a short active window', async () => {
   assert.equal(warning.warning, true);
   assert.ok(warning.warningProgress > 0);
 });
+
+
+test('runner locomotion profiles are visibly distinct', async () => {
+  const { runnerLocomotionProfile } = await import('../src/presentation/combat.js');
+  const volt = runnerLocomotionProfile('volt');
+  const spectre = runnerLocomotionProfile('spectre');
+  const hex = runnerLocomotionProfile('hex');
+  const colossus = runnerLocomotionProfile('colossus');
+  assert.ok(volt.stepRate > spectre.stepRate);
+  assert.ok(colossus.bob > spectre.bob);
+  assert.ok(hex.hover > 0);
+  assert.ok(colossus.dust > volt.dust);
+});
+
+test('damage wear stays subtle until health becomes critical', async () => {
+  const { damageWearPresentation } = await import('../src/presentation/combat.js');
+  const healthy = damageWearPresentation(0.9, 'volt', 1);
+  const critical = damageWearPresentation(0.15, 'volt', 1);
+  assert.equal(healthy.severity, 0);
+  assert.ok(critical.severity > 0.8);
+  assert.ok(critical.sparkRate > healthy.sparkRate);
+});
+
+test('projectile silhouettes identify rail, electric and melee families', async () => {
+  const { projectilePresentation } = await import('../src/presentation/combat.js');
+  const rail = projectilePresentation('spectre', false, 0.5, false);
+  const volt = projectilePresentation('volt', false, 0.5, false);
+  const melee = projectilePresentation('colossus', false, 0.5, true);
+  assert.ok(rail.shapeZ > volt.shapeZ);
+  assert.ok(rail.shapeX < volt.shapeX);
+  assert.ok(melee.shapeX > volt.shapeX);
+});
+
+test('super buildup has runner-specific posture and pulse', async () => {
+  const { superBuildPresentation } = await import('../src/presentation/combat.js');
+  const hex = superBuildPresentation('hex', 1);
+  const colossus = superBuildPresentation('colossus', 1);
+  const spectre = superBuildPresentation('spectre', 1);
+  assert.ok(colossus.crouch > spectre.crouch);
+  assert.ok(hex.halo > spectre.halo);
+  assert.notEqual(hex.pulseHz, colossus.pulseHz);
+});

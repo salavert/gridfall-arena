@@ -168,6 +168,7 @@ export function animateVolt(runner, dt) {
   const { eyes, mouth, antenna, barrel, fins, indicators, eye, lamp, chargeRings, chargeMaterial } = model.volt;
   const t = runner.game.elapsed;
   const charge = Math.min(1, (runner.voltCharge || 0) / 0.85);
+  const superBuild = Math.min(1, runner.superBuild || 0);
   const firing = runner.recoil;
   const blink = Math.sin(t * 0.83 + runner.id * 2.1) > 0.997 ? 0.12 : 1;
   eyes.forEach((e, i) => {
@@ -177,7 +178,7 @@ export function animateVolt(runner, dt) {
   mouth.scale.x = 1 + firing * 0.6;
   antenna.rotation.z = 0.24 + Math.sin(t * 3.4) * 0.045 + firing * 0.3;
   barrel.position.z = 0.42 - firing * 0.095;
-  barrel.rotation.z += dt * (charge * charge * 9 + firing * 5);
+  barrel.rotation.z += dt * (charge * charge * 9 + firing * 5 + superBuild * 6);
   for (const fin of fins) {
     const radius = 0.235 - charge * 0.055;
     fin.position.x = Math.cos(fin.userData.angle) * radius;
@@ -186,13 +187,14 @@ export function animateVolt(runner, dt) {
   indicators.forEach((m, i) => { m.scale.y = runner.ammo > i ? 1 : 0.15; });
   eye.emissiveIntensity = 1.6 + charge * 2.5;
   lamp.emissiveIntensity = 1.2 + charge * (1.2 + Math.sin(t * 24) * 0.5);
-  const chargeVisible = charge > 0.08;
-  chargeMaterial.opacity = chargeVisible ? 0.18 + charge * 0.62 : 0;
+  const chargeVisible = charge > 0.08 || superBuild > 0.06;
+  const visualCharge = Math.max(charge, superBuild * 0.82);
+  chargeMaterial.opacity = chargeVisible ? 0.18 + visualCharge * 0.62 : 0;
   chargeRings.forEach((ring, i) => {
     ring.visible = chargeVisible;
     ring.rotation.z += dt * (5 + charge * 15) * (i ? -1 : 1);
     const pulse = 1 + Math.sin(t * (12 + i * 3)) * 0.06 * charge;
-    ring.scale.setScalar((0.82 + charge * 0.22 + i * 0.05) * pulse);
+    ring.scale.setScalar((0.82 + visualCharge * 0.22 + i * 0.05) * pulse);
   });
   model.head.rotation.y = Math.sin(t * 1.3 + runner.id) * 0.025;
   model.body.rotation.z = -runner.moveX * 0.045;
