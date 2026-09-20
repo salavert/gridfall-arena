@@ -22,7 +22,14 @@ TARGET_HEIGHT = 1.42
 def reset_scene() -> None:
     bpy.ops.object.select_all(action='SELECT')
     bpy.ops.object.delete(use_global=False)
-    for block in (bpy.data.meshes, bpy.data.curves, bpy.data.materials, bpy.data.images):
+    for block in (
+        bpy.data.meshes,
+        bpy.data.curves,
+        bpy.data.materials,
+        bpy.data.images,
+        bpy.data.armatures,
+        bpy.data.actions,
+    ):
         for item in list(block):
             if item.users == 0:
                 block.remove(item)
@@ -259,11 +266,28 @@ def attach_ball_preview(rig):
 
 
 def collect_actions_from_library(path: Path, wanted: tuple[str, ...]):
+    before_actions = set(bpy.data.actions.keys())
     imported = import_asset(path)
-    actions = {action.name: action for action in bpy.data.actions if action.name in wanted}
+    imported_actions = [
+        action for name, action in bpy.data.actions.items()
+        if name not in before_actions
+    ]
+    actions = {action.name: action for action in imported_actions if action.name in wanted}
+
+    missing = [name for name in wanted if name not in actions]
+    if missing:
+        raise RuntimeError(f'Animation library is missing required clips: {missing}')
+
     # Animation-library render meshes/rig are never exported.
     for obj in imported:
         bpy.data.objects.remove(obj, do_unlink=True)
+
+    # Do not let the full Universal Animation Library leak into the shipping
+    # pilot. Keep only the small locomotion subset referenced by NLA tracks.
+    for action in imported_actions:
+        if action.name not in actions:
+            bpy.data.actions.remove(action)
+
     return actions
 
 
@@ -449,6 +473,9 @@ def build_character(source: Path, output: Path, character: str):
             bpy.data.objects.remove(obj, do_unlink=True)
 
     bpy.ops.object.select_all(action='SELECT')
+    # Export only NLA-backed actions belonging to this pilot. The source
+    # library contains many more clips and exporting them defeats the purpose
+    # of a small visual gate.
     bpy.ops.export_scene.gltf(
         filepath=str(output / f'{character}-pilot.glb'),
         export_format='GLB',
