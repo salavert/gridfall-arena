@@ -69,19 +69,16 @@ def world_bounds(objects: list[bpy.types.Object]) -> tuple[Vector, Vector]:
     return lo, hi
 
 
-def normalize_height(objects: list[bpy.types.Object], height: float = TARGET_HEIGHT) -> float:
+def normalize_rig_height(rig: bpy.types.Object, objects: list[bpy.types.Object], height: float = TARGET_HEIGHT) -> float:
     lo, hi = world_bounds(objects)
     measured = hi.z - lo.z
     if measured <= 0:
         raise RuntimeError('Invalid imported height')
     scale = height / measured
-    roots = [obj for obj in objects if obj.parent is None]
-    for root in roots:
-        root.scale *= scale
+    rig.scale *= scale
     bpy.context.view_layer.update()
     lo2, _ = world_bounds(objects)
-    for root in roots:
-        root.location.z -= lo2.z
+    rig.location.z -= lo2.z
     bpy.context.view_layer.update()
     return scale
 
@@ -124,116 +121,91 @@ def clear_texture_inputs(material: bpy.types.Material, keep_base_color: bool = T
             bpy.data.images.remove(image)
 
 
-def prune_outfit_variants(objects):
-    # The Ranger GLBs are modular wardrobes. Exporting every optional arm,
-    # hood and pauldron at once creates duplicate silhouettes. The pilot keeps
-    # one clean ranch-adventure outfit and drops medieval/alternate variants.
-    drop_tokens = (
-        'acc_pauldron',
-        'acc_pauldrons',
-        'arms_bracer',
-        'head_hood',
-        'body_belt_2',
-    )
-    kept = []
-    for obj in objects:
-        if obj.type == 'MESH' and any(token in obj.name.lower() for token in drop_tokens):
-            bpy.data.objects.remove(obj, do_unlink=True)
-            continue
-        kept.append(obj)
-    return kept
-
-
-def assign_outfit_palette(objects, *, body, accent, dark, boots):
-    mats = {
-        'body': flat_material('GF_Cloth_Primary', body),
-        'accent': flat_material('GF_Cloth_Accent', accent),
-        'dark': flat_material('GF_Cloth_Dark', dark),
-        'boots': flat_material('GF_Boots', boots, .64),
-    }
-    for obj in mesh_objects(objects):
-        name = obj.name.lower()
-        chosen = mats['body']
-        if any(key in name for key in ('boot', 'shoe', 'foot')):
-            chosen = mats['boots']
-        elif any(key in name for key in ('belt', 'glove', 'strap', 'pouch', 'acc', 'cape')):
-            chosen = mats['dark']
-        elif any(key in name for key in ('arm', 'shirt', 'inner', 'sleeve')):
-            chosen = mats['accent']
-        obj.data.materials.clear()
-        obj.data.materials.append(chosen)
-
-
-def retarget_outfit_to_armature(objects, rig):
-    for obj in mesh_objects(objects):
-        for modifier in obj.modifiers:
-            if modifier.type == 'ARMATURE':
-                modifier.object = rig
-        obj.parent = rig
-
-
-def strip_armature(objects, keep=None):
-    for obj in list(objects):
-        if obj.type == 'ARMATURE' and obj is not keep:
-            bpy.data.objects.remove(obj, do_unlink=True)
-
-
-def keep_head_region(obj: bpy.types.Object, min_weight: float = .05) -> None:
-    # A height cut is not safe for a T-pose: shoulders and horizontal arms can
-    # sit at the same height as the face. Keep only geometry actually weighted
-    # to the head/neck bones so the extracted Teen head cannot retain spare
-    # body or arm islands.
-    wanted_groups = {'Head', 'neck_01'}
-    group_ids = {
+def weighted_vertex_indices(obj: bpy.types.Object, group_names: tuple[str, ...], min_weight: float = .12) -> set[int]:
+    wanted = {
         group.index for group in obj.vertex_groups
-        if group.name in wanted_groups
+        if group.name in set(group_names)
     }
-    if not group_ids:
-        raise RuntimeError(
-            f'{obj.name} has no Head/neck_01 vertex groups; cannot extract head safely'
-        )
-
-    keep_indices = set()
-    for vertex in obj.data.vertices:
+    if not wanted:
+        return set()
+    return {
+        vertex.index
+        for vertex in obj.data.vertices
         if any(
-            assignment.group in group_ids and assignment.weight >= min_weight
+            assignment.group in wanted and assignment.weight >= min_weight
             for assignment in vertex.groups
-        ):
-            keep_indices.add(vertex.index)
+        )
+    }
 
-    if not keep_indices:
-        raise RuntimeError(f'{obj.name} head extraction removed every vertex')
+
+def duplicate_weighted_region(
+    source: bpy.types.Object,
+    name: str,
+    group_names: tuple[str, ...],
+    material: bpy.types.Material,
+    *,
+    min_weight: float = .12,
+    inflate: float = .008,
+    max_height_ratio: float | None = None,
+    min_height_ratio: float | None = None,
+) -> bpy.types.Object:
+    keep = weighted_vertex_indices(source, group_names, min_weight)
+    if not keep:
+        raise RuntimeError(f'{name}: no vertices matched {group_names}')
+
+    clone = source.copy()
+    clone.data = source.data.copy()
+    clone.name = name
+    bpy.context.collection.objects.link(clone)
+
+    lo, hi = world_bounds([source])
+    height = max(1e-6, hi.z - lo.z)
 
     bm = bmesh.new()
-    bm.from_mesh(obj.data)
+    bm.from_mesh(clone.data)
     bm.verts.ensure_lookup_table()
-    doomed = [vertex for vertex in bm.verts if vertex.index not in keep_indices]
+    bm.normal_update()
+
+    doomed = []
+    for vertex in bm.verts:
+        keep_vertex = vertex.index in keep
+        if keep_vertex and (min_height_ratio is not None or max_height_ratio is not None):
+            world_z = (clone.matrix_world @ vertex.co).z
+            ratio = (world_z - lo.z) / height
+            if min_height_ratio is not None and ratio < min_height_ratio:
+                keep_vertex = False
+            if max_height_ratio is not None and ratio > max_height_ratio:
+                keep_vertex = False
+        if not keep_vertex:
+            doomed.append(vertex)
+
     bmesh.ops.delete(bm, geom=doomed, context='VERTS')
-    bm.to_mesh(obj.data)
+    bm.normal_update()
+    for vertex in bm.verts:
+        vertex.co += vertex.normal * inflate
+    bm.to_mesh(clone.data)
     bm.free()
-    obj.data.update()
+    clone.data.update()
+
+    clone.data.materials.clear()
+    clone.data.materials.append(material)
+    return clone
 
 
-def make_rigid(obj: bpy.types.Object, rig, bone_name: str) -> None:
-    for modifier in list(obj.modifiers):
-        if modifier.type == 'ARMATURE':
-            obj.modifiers.remove(modifier)
-    world = obj.matrix_world.copy()
-    obj.parent = rig
-    obj.parent_type = 'BONE'
-    obj.parent_bone = bone_name
-    obj.matrix_world = world
-
-
-def extract_teen_head(base_path: Path, rig, hair_color):
-    imported = import_asset(base_path)
-    meshes = mesh_objects(imported)
+def style_teen_base(objects, character: str):
+    meshes = mesh_objects(objects)
     body = max(meshes, key=lambda obj: len(obj.data.vertices))
-    keep_head_region(body)
-
-    skin = flat_material('GF_Skin', (.78, .52, .38, 1), .82)
-    eyes = flat_material('GF_Eyes', (.055, .028, .018, 1), .48)
-    brows = flat_material('GF_Brows', hair_color, .84)
+    skin = flat_material(
+        'GF_Skin_Carla' if character == 'carla' else 'GF_Skin_Bruno',
+        (.84, .59, .43, 1) if character == 'carla' else (.82, .55, .39, 1),
+        .82,
+    )
+    eyes = flat_material('GF_Eyes', (.045, .025, .018, 1), .48)
+    brows = flat_material(
+        'GF_Brows_Carla' if character == 'carla' else 'GF_Brows_Bruno',
+        (.48, .34, .20, 1) if character == 'carla' else (.20, .11, .055, 1),
+        .84,
+    )
 
     for obj in meshes:
         name = obj.name.lower()
@@ -244,33 +216,103 @@ def extract_teen_head(base_path: Path, rig, hair_color):
             material = brows
         obj.data.materials.clear()
         obj.data.materials.append(material)
-        make_rigid(obj, rig, 'Head')
 
-    strip_armature(imported)
-    return meshes
+    return body
 
 
-def attach_hair(path: Path, rig, color):
+def build_teen_clothes(body: bpy.types.Object, character: str):
+    if character == 'carla':
+        shirt = flat_material('GF_Carla_Shirt', (.78, .30, .22, 1), .82)
+        vest = flat_material('GF_Carla_Vest', (.15, .29, .40, 1), .76)
+        pants = flat_material('GF_Carla_Pants', (.20, .34, .46, 1), .82)
+        boots = flat_material('GF_Carla_Boots', (.19, .105, .055, 1), .66)
+    else:
+        shirt = flat_material('GF_Bruno_Shirt', (.88, .66, .20, 1), .80)
+        vest = flat_material('GF_Bruno_Vest', (.10, .26, .48, 1), .74)
+        pants = flat_material('GF_Bruno_Pants', (.12, .21, .34, 1), .84)
+        boots = flat_material('GF_Bruno_Boots', (.14, .085, .05, 1), .66)
+
+    upper = (
+        'spine_01', 'spine_02', 'spine_03',
+        'clavicle_l', 'clavicle_r',
+        'upperarm_l', 'upperarm_r',
+        'lowerarm_l', 'lowerarm_r',
+    )
+    torso = ('spine_01', 'spine_02', 'spine_03', 'clavicle_l', 'clavicle_r')
+    lower = ('pelvis', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r')
+    feet = ('calf_l', 'calf_r', 'foot_l', 'foot_r', 'ball_l', 'ball_r')
+
+    pieces = [
+        duplicate_weighted_region(
+            body, f'{character.title()}_Shirt', upper, shirt,
+            min_weight=.10, inflate=.006, min_height_ratio=.43,
+        ),
+        duplicate_weighted_region(
+            body, f'{character.title()}_Vest', torso, vest,
+            min_weight=.10, inflate=.016, min_height_ratio=.52, max_height_ratio=.82,
+        ),
+        duplicate_weighted_region(
+            body, f'{character.title()}_Pants', lower, pants,
+            min_weight=.10, inflate=.009, min_height_ratio=.15, max_height_ratio=.58,
+        ),
+        duplicate_weighted_region(
+            body, f'{character.title()}_Boots', feet, boots,
+            min_weight=.10, inflate=.014, max_height_ratio=.28,
+        ),
+    ]
+    return pieces
+
+
+def attach_hair(path: Path, rig, color, *, scale: float = 1.0):
     imported = import_asset(path)
+    source_rig = find_armature(imported)
+    source_bone = source_rig.data.bones.get('Head')
+    target_bone = rig.data.bones.get('Head')
+    if not source_bone or not target_bone:
+        raise RuntimeError('Hair asset and target rig both need a Head bone')
+
+    source_head_world = source_rig.matrix_world @ source_bone.matrix_local
+    target_head_world = rig.matrix_world @ target_bone.matrix_local
+    align = target_head_world @ source_head_world.inverted()
+
     hair_mat = flat_material('GF_Hair', color, .82)
+    result = []
     for obj in mesh_objects(imported):
+        obj.matrix_world = align @ obj.matrix_world
+        if scale != 1:
+            # Scale around the aligned Head origin to preserve placement.
+            origin = target_head_world.translation
+            local = obj.matrix_world.translation - origin
+            obj.matrix_world.translation = origin + local * scale
+            obj.scale *= scale
         make_rigid(obj, rig, 'Head')
         obj.data.materials.clear()
         obj.data.materials.append(hair_mat)
-    strip_armature(imported)
-    return imported
+        result.append(obj)
+
+    strip_armature(imported, keep=rig)
+    return result
 
 
 def add_blonde_streak(rig):
-    mat = flat_material('GF_Carla_Streak', (0.94, 0.74, 0.39, 1), .76)
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=1)
-    streak = bpy.context.object
-    streak.name = 'Carla_Blonde_Fringe_Streak'
-    streak.scale = (0.034, 0.018, 0.105)
-    # Head-bone local coordinates. The deliberately small streak remains a graphic
-    # read at gameplay distance rather than becoming a floating hair plate.
-    streak.location = (0.055, -0.095, 0.09)
-    streak.rotation_euler = (math.radians(18), math.radians(-10), math.radians(-14))
+    mat = flat_material('GF_Carla_Streak', (0.95, 0.76, 0.43, 1), .78)
+    curve = bpy.data.curves.new('Carla_Blonde_Fringe_Curve', type='CURVE')
+    curve.dimensions = '3D'
+    curve.resolution_u = 2
+    curve.bevel_depth = .008
+    curve.bevel_resolution = 2
+    spline = curve.splines.new('BEZIER')
+    spline.bezier_points.add(2)
+    for point, co in zip(
+        spline.bezier_points,
+        ((.035, -.102, .105), (.054, -.119, .045), (.040, -.105, -.015)),
+    ):
+        point.co = co
+        point.handle_left_type = 'AUTO'
+        point.handle_right_type = 'AUTO'
+
+    streak = bpy.data.objects.new('Carla_Blonde_Fringe_Streak', curve)
+    bpy.context.collection.objects.link(streak)
     streak.data.materials.append(mat)
     streak.parent = rig
     streak.parent_type = 'BONE'
@@ -519,45 +561,29 @@ def setup_preview_camera(character_objects, output: Path, name: str):
 def build_character(source: Path, output: Path, character: str):
     reset_scene()
     if character == 'carla':
-        outfit_file = source / 'Female_Ranger.glb'
-        head_file = source / 'Teen_Female_FullBody.gltf'
+        base_file = source / 'Teen_Female_FullBody.gltf'
         hair_file = source / 'Hair_Long.glb'
-        palette = dict(
-            body=(.12, .23, .34, 1),
-            accent=(.60, .22, .18, 1),
-            dark=(.17, .10, .065, 1),
-            boots=(.20, .11, .065, 1),
-        )
-        hair_color = (.43, .29, .16, 1)
+        hair_color = (.55, .40, .23, 1)
+        hair_scale = .88
     else:
-        outfit_file = source / 'Male_Ranger.glb'
-        head_file = source / 'Teen_Male_FullBody.gltf'
+        base_file = source / 'Teen_Male_FullBody.gltf'
         hair_file = source / 'Hair_SimpleParted.glb'
-        palette = dict(
-            body=(.10, .24, .43, 1),
-            accent=(.87, .64, .18, 1),
-            dark=(.08, .095, .13, 1),
-            boots=(.15, .09, .055, 1),
-        )
         hair_color = (.20, .105, .055, 1)
+        hair_scale = .90
 
-    outfit = import_asset(outfit_file)
-    rig = find_armature(outfit)
+    base = import_asset(base_file)
+    rig = find_armature(base)
     rig.name = 'GridfallRig'
-    outfit = prune_outfit_variants(outfit)
-    assign_outfit_palette(outfit, **palette)
+    body = style_teen_base(base, character)
+    build_teen_clothes(body, character)
+    attach_hair(hair_file, rig, hair_color, scale=hair_scale)
 
-    # Head and hair are rigid attachments. This avoids silently combining
-    # incompatible bind poses while still using the common UBC Head socket.
-    extract_teen_head(head_file, rig, hair_color)
-    attach_hair(hair_file, rig, hair_color)
     if character == 'carla':
         add_blonde_streak(rig)
         add_whip_handle(rig)
     else:
         attach_ball_preview(rig)
 
-    # Include only the small locomotion set we actually need for the pilot.
     actions = collect_actions_from_library(
         source / 'UAL1.glb',
         ('Idle_Loop', 'Walk_Loop', 'Jog_Fwd_Loop'),
@@ -565,28 +591,32 @@ def build_character(source: Path, output: Path, character: str):
     stash_actions(rig, actions)
     custom_actions(rig, character)
 
-    all_character_objects = [obj for obj in bpy.context.scene.objects]
-    # Height is a geometry contract, not an animation-frame accident.
+    # The Teen body defines the visual scale. Hair, clothes and props are all
+    # descendants or attachments of the same rig and therefore scale together.
     for track in rig.animation_data.nla_tracks:
         track.mute = True
     rig.data.pose_position = 'REST'
     bpy.context.view_layer.update()
-    normalize_height(all_character_objects, TARGET_HEIGHT)
+    character_meshes = [
+        obj for obj in bpy.context.scene.objects
+        if obj.type in {'MESH', 'CURVE'} and not obj.name.startswith(('Plane', 'Area', 'Camera'))
+    ]
+    normalize_rig_height(rig, [obj for obj in character_meshes if obj.type == 'MESH'], TARGET_HEIGHT)
     rig.data.pose_position = 'POSE'
     set_preview_pose(rig)
 
     output.mkdir(parents=True, exist_ok=True)
-    # Render before export. Preview-only scene objects are removed afterwards.
-    setup_preview_camera(all_character_objects, output, character)
+    setup_preview_camera(
+        [obj for obj in character_meshes if obj.type == 'MESH'],
+        output,
+        character,
+    )
     for obj in list(bpy.context.scene.objects):
         if obj.name.startswith(('Plane', 'Area', 'Camera')):
             bpy.data.objects.remove(obj, do_unlink=True)
 
     restore_export_tracks(rig)
     bpy.ops.object.select_all(action='SELECT')
-    # Export only NLA-backed actions belonging to this pilot. The source
-    # library contains many more clips and exporting them defeats the purpose
-    # of a small visual gate.
     bpy.ops.export_scene.gltf(
         filepath=str(output / f'{character}-pilot.glb'),
         export_format='GLB',
