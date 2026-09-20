@@ -266,12 +266,18 @@ def attach_ball_preview(rig):
 
 
 def canonical_action_name(name: str) -> str:
-    # Blender's glTF importer may preserve source armature prefixes such as
-    # "Armature|Armature|Idle_Loop". Three.js exposes the canonical clip name
-    # from the GLB, so normalize imports back to the final segment.
+    # Blender's glTF importer changes Quaternius action names depending on
+    # importer/version. Observed forms include:
+    #   Armature|Armature|Idle_Loop
+    #   Idle_Loop_Armature
+    #   Idle_Loop_Armature.001
+    # Three.js exposes the canonical GLB clip name, so collapse every Blender
+    # variant back to the semantic final clip name.
     canonical = name.split('|')[-1].strip()
     if len(canonical) > 4 and canonical[-4] == '.' and canonical[-3:].isdigit():
         canonical = canonical[:-4]
+    if canonical.endswith('_Armature'):
+        canonical = canonical[:-len('_Armature')]
     return canonical or name
 
 
