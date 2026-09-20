@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { RULES, RUNNERS } from '../src/game/config.js';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 
@@ -8,15 +9,13 @@ test('v0.3 ships the complete Gridfall identity and roster', () => {
   for (const marker of [
     '<title>Gridfall Arena</title>',
     'GRIDFALL<span>ARENA</span>',
-    'name:`VOLT`',
-    'name:`SPECTRE`',
-    'name:`HEX`',
-    'name:`COLOSSUS`',
     'OVERDRIVE',
     'THE VOID IS COLLAPSING THE GRID!',
   ]) {
     assert.ok(html.includes(marker), `missing release marker: ${marker}`);
   }
+  assert.deepEqual(Object.keys(RUNNERS), ['volt', 'spectre', 'hex', 'colossus']);
+  assert.deepEqual(Object.values(RUNNERS).map(runner => runner.name), ['VOLT', 'SPECTRE', 'HEX', 'COLOSSUS']);
 });
 
 test('legacy player-facing branding is absent', () => {
@@ -35,7 +34,6 @@ test('production page retains the full rendering and game systems', () => {
     'GTAOPass',
     'UnrealBloomPass',
     'shadowMap',
-    'gasDuration:115',
     'addBrawler',
     'spawnRoster',
     'benchmarkQuality',
@@ -43,4 +41,5 @@ test('production page retains the full rendering and game systems', () => {
   ]) {
     assert.ok(html.includes(subsystem), `missing subsystem: ${subsystem}`);
   }
+  assert.equal(RULES.gasDuration, 115);
 });
