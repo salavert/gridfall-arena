@@ -4,10 +4,12 @@ import { TILES as Z, SURFACES as Fc, RUNNER_RADIUS as Ic, RULES as Lc, LAMP as R
 import { roleTactics, aiMood, tacticalPointScore, objectiveInterest } from './game/ai.js';
 import { AudioSystem as Xu } from './systems/CombatAudio.js';
 import { combatIntensity as presentationCombatIntensity, nearMissPresentation, duelCameraFrame, feedbackBands, movementPose, attackIntentPose, hitReactionPose, corePowerPresentation, destructionProfile, superScarProfile, arenaZoneProfile, contactShadowPresentation, incomingProjectileThreat, hazardPhase, runnerLocomotionProfile, damageWearPresentation, projectilePresentation, superBuildPresentation } from './presentation/combat.js';
+import { FrontEndDirector } from './presentation/FrontEndDirector.js';
+import './presentation/frontEnd.css';
 import './volt/styles.css';
 
 
-const productionDependencies = { createVoltModel, animateVolt, attackVolt, controlVoltDesktop, controlVoltTouch, updateVoltCharge, voltShotFeedback, reactToVolt, runFrame, Z, Fc, Ic, Lc, Rc, Bc, classifyImpactSurface, roleTactics, aiMood, tacticalPointScore, objectiveInterest, Xu, presentationCombatIntensity, nearMissPresentation, duelCameraFrame, feedbackBands, movementPose, attackIntentPose, hitReactionPose, corePowerPresentation, destructionProfile, superScarProfile, arenaZoneProfile, contactShadowPresentation, incomingProjectileThreat, hazardPhase, runnerLocomotionProfile, damageWearPresentation, projectilePresentation, superBuildPresentation };
+const productionDependencies = { createVoltModel, animateVolt, attackVolt, controlVoltDesktop, controlVoltTouch, updateVoltCharge, voltShotFeedback, reactToVolt, runFrame, Z, Fc, Ic, Lc, Rc, Bc, classifyImpactSurface, roleTactics, aiMood, tacticalPointScore, objectiveInterest, Xu, presentationCombatIntensity, nearMissPresentation, duelCameraFrame, feedbackBands, movementPose, attackIntentPose, hitReactionPose, corePowerPresentation, destructionProfile, superScarProfile, arenaZoneProfile, contactShadowPresentation, incomingProjectileThreat, hazardPhase, runnerLocomotionProfile, damageWearPresentation, projectilePresentation, superBuildPresentation, FrontEndDirector };
 Object.assign(globalThis, productionDependencies);
 
 const loadClassic = (relativePath) => new Promise((resolve, reject) => {
