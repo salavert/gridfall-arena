@@ -180,3 +180,21 @@ export function incomingProjectileThreat({ along, cross, speed, isSuper = false 
     opacity: clamp(0.42 + urgency * 0.45 + (isSuper ? 0.13 : 0), 0, 1),
   };
 }
+
+
+export function hazardPhase(time, offset = 0, type = 'steam') {
+  const period = type === 'electric' ? 5.4 : 4.8;
+  const activeWindow = type === 'electric' ? 0.72 : 0.9;
+  const warningWindow = type === 'electric' ? 1.2 : 1.05;
+  const phase = ((time + offset) % period + period) % period;
+  const active = phase < activeWindow;
+  const warning = phase > period - warningWindow;
+  return {
+    period,
+    phase,
+    active,
+    warning,
+    warningProgress: warning ? (phase - (period - warningWindow)) / warningWindow : 0,
+    activeProgress: active ? phase / activeWindow : 0,
+  };
+}

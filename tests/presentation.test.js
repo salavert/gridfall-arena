@@ -123,3 +123,16 @@ test('incoming projectile threat rejects misses and prioritizes imminent supers'
   assert.ok(normal);
   assert.ok(superShot.priority > normal.priority);
 });
+
+
+test('hazards expose warning before a short active window', async () => {
+  const { hazardPhase } = await import('../src/presentation/combat.js');
+  const active = hazardPhase(0, 0, 'steam');
+  const idle = hazardPhase(2.2, 0, 'steam');
+  const warning = hazardPhase(4.2, 0, 'steam');
+  assert.equal(active.active, true);
+  assert.equal(idle.active, false);
+  assert.equal(idle.warning, false);
+  assert.equal(warning.warning, true);
+  assert.ok(warning.warningProgress > 0);
+});
