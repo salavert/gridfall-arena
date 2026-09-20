@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { ChargeTrigger, voltShot } from '../src/volt/weapon.js';
 import { FixedClock } from '../src/volt/timing.js';
 import { shootVolt, controlVoltDesktop, controlVoltTouch, updateVoltCharge, reactToVolt } from '../src/volt/gameplay.js';
@@ -12,7 +15,16 @@ source = source.slice(0,source.indexOf(';function ud('))+';export {fu,Vu,Bc,VOLT
 source = source.replace(/from '(\.\/src\/volt\/[^']+)'/g,(_,p)=>`from '${new URL('../'+p,import.meta.url)}'`).replace(/import '\.\/src\/volt\/styles.css';/,'');
 globalThis.window = { addEventListener(){}, devicePixelRatio:1 };
 globalThis.document = { getElementById(){return null;} };
-const { fu: Runner, Bc: roster, VOLT_GRAPHICS: G } = await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const moduleDir = await mkdtemp(join(tmpdir(), 'gridfall-volt-test-'));
+const modulePath = join(moduleDir, 'production-engine.mjs');
+let production;
+try {
+  await writeFile(modulePath, source);
+  production = await import(pathToFileURL(modulePath).href);
+} finally {
+  await rm(moduleDir, { recursive: true, force: true });
+}
+const { fu: Runner, Bc: roster, VOLT_GRAPHICS: G } = production;
 function fixture(id='volt', isPlayer=true) {
   const bullets=[];
   const game={ state:'playing', elapsed:10, scene:new G.Group(),
