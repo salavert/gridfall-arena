@@ -618,7 +618,10 @@ def build_character(source: Path, output: Path, character: str):
         obj for obj in bpy.context.scene.objects
         if obj.type in {'MESH', 'CURVE'} and not obj.name.startswith(('Plane', 'Area', 'Camera'))
     ]
-    normalize_rig_height(rig, [obj for obj in character_meshes if obj.type == 'MESH'], TARGET_HEIGHT)
+    # Canonical gameplay height is defined by the Teen body only. Modular
+    # hair/props can have source-space bounds from a differently proportioned
+    # donor and must never shrink the whole character.
+    normalize_rig_height(rig, [body], TARGET_HEIGHT)
     rig.data.pose_position = 'POSE'
     set_preview_pose(rig)
 
