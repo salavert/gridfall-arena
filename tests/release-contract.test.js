@@ -19,8 +19,8 @@ test('v0.3 ships the complete Gridfall identity and roster', () => {
   ]) {
     assert.ok(production.includes(marker), `missing release marker: ${marker}`);
   }
-  assert.deepEqual(Object.keys(RUNNERS), ['volt', 'spectre', 'hex', 'colossus']);
-  assert.deepEqual(Object.values(RUNNERS).map(runner => runner.name), ['VOLT', 'SPECTRE', 'HEX', 'COLOSSUS']);
+  assert.deepEqual(Object.keys(RUNNERS), ['volt', 'spectre', 'hex', 'colossus', 'carla', 'bruno']);
+  assert.deepEqual(Object.values(RUNNERS).map(runner => runner.name), ['VOLT', 'SPECTRE', 'HEX', 'COLOSSUS', 'CARLA', 'BRUNO']);
 });
 
 test('legacy player-facing branding is absent', () => {

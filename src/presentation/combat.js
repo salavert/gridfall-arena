@@ -121,13 +121,15 @@ export function superScarProfile(id, power = 1) {
     volt: { type: 'electric', decalColor: 0x163d41, aspect: 1.15, life: 52, peak: 0.46, zoneLife: 3.4, zoneAspect: 1.12 },
     spectre: { type: 'slash', decalColor: 0x211c39, aspect: 3.1, life: 46, peak: 0.5, zoneLife: 2.6, zoneAspect: 2.5 },
     hex: { type: 'rift', decalColor: 0x35173e, aspect: 1.25, life: 62, peak: 0.55, zoneLife: 5.1, zoneAspect: 1.18 },
+    carla: { type: 'slash', decalColor: 0x3b2b1d, aspect: 2.15, life: 42, peak: 0.42, zoneLife: 2.8, zoneAspect: 1.7 },
+    bruno: { type: 'crack', decalColor: 0x2c3039, aspect: 1.55, life: 50, peak: 0.48, zoneLife: 3.1, zoneAspect: 1.45 },
     colossus: { type: 'crack', decalColor: 0x342b27, aspect: 1.45, life: 66, peak: 0.56, zoneLife: 3.2, zoneAspect: 1.35 },
   };
   const base = profiles[id] || profiles.volt;
   return {
     ...base,
-    size: (id === 'spectre' ? 0.24 : id === 'colossus' ? 0.5 : id === 'hex' ? 0.42 : 0.3) * p,
-    zoneScale: (id === 'spectre' ? 0.85 : id === 'colossus' ? 1.2 : id === 'hex' ? 1.05 : 0.9) * p,
+    size: (id === 'spectre' ? 0.24 : id === 'carla' ? 0.34 : id === 'bruno' ? 0.44 : id === 'colossus' ? 0.5 : id === 'hex' ? 0.42 : 0.3) * p,
+    zoneScale: (id === 'spectre' ? 0.85 : id === 'carla' ? 0.95 : id === 'bruno' ? 1.08 : id === 'colossus' ? 1.2 : id === 'hex' ? 1.05 : 0.9) * p,
   };
 }
 
@@ -204,6 +206,8 @@ const LOCOMOTION = Object.freeze({
   volt: Object.freeze({ stepRate: 3.75, stride: 1.08, bob: 0.9, lean: 1.18, twist: 1.08, dust: 0.9, hover: 0 }),
   spectre: Object.freeze({ stepRate: 3.05, stride: 0.82, bob: 0.48, lean: 0.72, twist: 0.62, dust: 0.55, hover: 0 }),
   hex: Object.freeze({ stepRate: 2.65, stride: 0.62, bob: 0.35, lean: 0.82, twist: 1.15, dust: 0.42, hover: 0.035 }),
+  carla: Object.freeze({ stepRate: 3.35, stride: 0.92, bob: 0.62, lean: 0.96, twist: 0.9, dust: 0.68, hover: 0 }),
+  bruno: Object.freeze({ stepRate: 3.55, stride: 1.02, bob: 0.78, lean: 1.02, twist: 0.86, dust: 0.82, hover: 0 }),
   colossus: Object.freeze({ stepRate: 2.5, stride: 1.18, bob: 1.35, lean: 0.58, twist: 0.48, dust: 1.35, hover: 0 }),
 });
 
@@ -228,6 +232,9 @@ export function projectilePresentation(id, isSuper, progress = 0, melee = false)
   const superMul = isSuper ? 1.22 : 1;
   if (id === 'spectre') return { shapeX: 0.42, shapeY: 0.42, shapeZ: 2.15 * superMul, pulseHz: 34, pulse: 0.025, trailGap: isSuper ? 0.012 : 0.019, trailScale: isSuper ? 1.45 : 0.92, light: 0.72, wake: 0.18 };
   if (id === 'volt') return { shapeX: 1.22, shapeY: 1.12, shapeZ: (0.88 + progress * 0.12) * superMul, pulseHz: 21, pulse: 0.09, trailGap: isSuper ? 0.019 : 0.03, trailScale: isSuper ? 2.2 : 1.7, light: 1.18, wake: 0.32 };
+  if (id === 'carla-whip') return { shapeX: 0.34, shapeY: 0.3, shapeZ: 4.9, pulseHz: 18, pulse: 0.025, trailGap: 0.045, trailScale: 0.8, light: 0.48, wake: 0.12 };
+  if (id === 'carla-dog') return { shapeX: 1, shapeY: 1, shapeZ: 1, pulseHz: 13, pulse: 0.02, trailGap: 0.035, trailScale: 1.15, light: 0.7, wake: 0.42 };
+  if (id === 'bruno-ball' || id === 'bruno-mega') return { shapeX: 1, shapeY: 1, shapeZ: 1, pulseHz: 10, pulse: 0.018, trailGap: isSuper ? 0.018 : 0.04, trailScale: isSuper ? 2.1 : 1.05, light: isSuper ? 1.2 : 0.58, wake: isSuper ? 0.58 : 0.18 };
   if (id === 'colossus' || melee) return { shapeX: 1.5, shapeY: 0.72, shapeZ: 0.68 * superMul, pulseHz: 12, pulse: 0.035, trailGap: 0.05, trailScale: 1.75, light: 0.62, wake: 0.5 };
   return { shapeX: 1, shapeY: 1, shapeZ: 1.15 * superMul, pulseHz: 17, pulse: 0.055, trailGap: 0.035, trailScale: 1.4, light: 1, wake: 0.25 };
 }
@@ -238,6 +245,8 @@ export function superBuildPresentation(id, progress) {
     volt: { crouch: 0.07, weapon: 0.055, halo: 0.2, twist: 0.05, pulse: 15, light: 2.8 },
     spectre: { crouch: 0.035, weapon: 0.025, halo: 0.14, twist: -0.03, pulse: 22, light: 2.3 },
     hex: { crouch: 0.09, weapon: 0.04, halo: 0.24, twist: -0.11, pulse: 10, light: 3.1 },
+    carla: { crouch: 0.08, weapon: 0.045, halo: 0.18, twist: -0.08, pulse: 12, light: 2.6 },
+    bruno: { crouch: 0.12, weapon: 0.06, halo: 0.2, twist: 0.1, pulse: 9, light: 3.2 },
     colossus: { crouch: 0.16, weapon: 0.02, halo: 0.18, twist: 0.08, pulse: 7, light: 3.5 },
   };
   const b = profiles[id] || profiles.volt;

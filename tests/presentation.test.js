@@ -86,9 +86,11 @@ test('each super leaves a distinct semantic scar and temporary field', async () 
   const spectre = superScarProfile('spectre');
   const hex = superScarProfile('hex');
   const colossus = superScarProfile('colossus');
+  const carla = superScarProfile('carla');
+  const bruno = superScarProfile('bruno');
   assert.deepEqual(
-    [volt.type, spectre.type, hex.type, colossus.type],
-    ['electric', 'slash', 'rift', 'crack'],
+    [volt.type, spectre.type, hex.type, colossus.type, carla.type, bruno.type],
+    ['electric', 'slash', 'rift', 'crack', 'slash', 'crack'],
   );
   assert.ok(spectre.aspect > 2);
   assert.ok(hex.zoneLife > volt.zoneLife);
@@ -164,9 +166,13 @@ test('projectile silhouettes identify rail, electric and melee families', async 
   const rail = projectilePresentation('spectre', false, 0.5, false);
   const volt = projectilePresentation('volt', false, 0.5, false);
   const melee = projectilePresentation('colossus', false, 0.5, true);
+  const whip = projectilePresentation('carla-whip', false, 0.5, false);
+  const ball = projectilePresentation('bruno-ball', false, 0.5, false);
   assert.ok(rail.shapeZ > volt.shapeZ);
   assert.ok(rail.shapeX < volt.shapeX);
   assert.ok(melee.shapeX > volt.shapeX);
+  assert.ok(whip.shapeZ > rail.shapeZ);
+  assert.equal(ball.shapeX, ball.shapeZ);
 });
 
 test('super buildup has runner-specific posture and pulse', async () => {

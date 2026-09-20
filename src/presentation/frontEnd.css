@@ -72,7 +72,7 @@
 .hero-stat i { display: block; height: 6px; background: #dce7ff26; overflow: hidden; transform: skewX(-12deg); }
 .hero-stat b { display: block; height: 100%; width: var(--value, 50%); background: var(--selection-color); transition: width 180ms ease; }
 .roster-wrap { min-width: 0; }
-#cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(8px, 1vw, 16px); }
+#cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(8px, 1vw, 16px); }
 .runner-tile {
   position: relative;
   display: flex;
@@ -146,7 +146,7 @@
   .menu-bottom { grid-template-columns: 1fr 1fr; gap: 32px; }
   .hero-copy { grid-column: 1; padding: 0; }
   .menu-actions { grid-row: 1; grid-column: 2; padding: 0 0 5px; justify-self: end; width: 260px; }
-  .roster-wrap { grid-column: 1 / -1; justify-self: center; width: min(540px, 100%); }
+  .roster-wrap { grid-column: 1 / -1; justify-self: center; width: min(620px, 100%); }
   .hero-name { font-size: 44px; }
   .hero-blurb { display: none; }
 }
@@ -162,9 +162,9 @@
   .hero-blurb { display: none; }
   .hero-stats { grid-template-columns: repeat(3, 1fr); max-width: 100%; margin-top: 9px; }
   .hero-stat { grid-template-columns: 1fr; gap: 4px; }
-  .roster-wrap { width: min(264px, 100%); justify-self: center; margin-top: 22px; }
-  #cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 16px; }
-  .runner-portrait { aspect-ratio: auto; height: clamp(52px, 8.5svh, 82px); }
+  .roster-wrap { width: min(280px, 100%); justify-self: center; margin-top: 12px; }
+  #cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 14px; }
+  .runner-portrait { aspect-ratio: auto; height: clamp(42px, 7svh, 64px); }
   .runner-portrait img { width: auto; max-width: 100%; }
   .runner-tile strong { padding: 5px 2px; font-size: 11px; }
   .runner-marker { font-size: 11px; top: -25px; }

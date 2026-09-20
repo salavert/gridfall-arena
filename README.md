@@ -20,7 +20,7 @@ The latest published version is deployed from `main` through the manual GitHub P
 
 ## The Gridfall run
 
-- **Four complete combat kits:** Volt's chargeable induction cannon, Spectre's rail burst, Hex's arcing rift cores, and Colossus's crushing phase leap.
+- **Six complete combat kits:** Volt's chargeable induction cannon, Spectre's rail burst, Hex's arcing rift cores, Colossus's crushing phase leap, Carla's whip plus Border Collie rush, and Bruno's football shots plus power-kick Overdrive.
 - **Destructible tactical cover:** crates and breakable walls turn every fight into a changing arena.
 - **Core snowball with counterplay:** eliminations and boxes drop cores that increase health and damage, but those gains return to the field when a runner falls.
 - **Escalating collapse:** the void closes sooner and faster, forcing the final duel instead of letting matches drift.

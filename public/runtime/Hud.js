@@ -11,8 +11,9 @@ var Ku=new H,$=e=>document.getElementById(e),qu=e=>{let t=Math.floor(e)%24,n=Mat
     tile.setAttribute('aria-label', `${runner.name}, ${runner.role}`);
     tile.style.setProperty('--tile-body', '#' + runner.palette.body.toString(16).padStart(6, '0'));
     tile.style.setProperty('--tile-accent', '#' + runner.palette.accent.toString(16).padStart(6, '0'));
+    const portrait = runner.portrait || `${id}-portrait.png`;
     tile.innerHTML = `<span class="runner-marker" aria-hidden="true">P1</span>
-      <span class="runner-portrait"><img src="./${id}-portrait.png" alt="" draggable="false" /></span>
+      <span class="runner-portrait"><img src="./${portrait}" alt="" draggable="false" /></span>
       <strong>${runner.name}</strong>`;
     tile.addEventListener('click', () => this.chooseRunner(id));
     $('cards').appendChild(tile);
@@ -43,7 +44,7 @@ handleMenuKey(event) {
     return;
   }
   if (!this.menuIsActive()) return;
-  const columns = window.matchMedia('(max-width: 600px) and (orientation: portrait)').matches ? 2 : 4;
+  const columns = window.matchMedia('(max-width: 600px) and (orientation: portrait)').matches ? 2 : 3;
   const action = menuKeyAction(event, columns);
   if (!action) return;
   event.preventDefault();

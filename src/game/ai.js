@@ -4,6 +4,8 @@ const ROLES = Object.freeze({
   volt: Object.freeze({ preferred: 3.6, strafe: 1.05, cover: 0.35, flank: 0.9, aggression: 0.72, objective: 0.55 }),
   spectre: Object.freeze({ preferred: 7.0, strafe: 0.58, cover: 1.0, flank: 0.35, aggression: 0.42, objective: 0.35 }),
   hex: Object.freeze({ preferred: 5.7, strafe: 0.9, cover: 0.72, flank: 0.62, aggression: 0.5, objective: 0.68 }),
+  carla: Object.freeze({ preferred: 4.4, strafe: 0.98, cover: 0.58, flank: 0.82, aggression: 0.62, objective: 0.72 }),
+  bruno: Object.freeze({ preferred: 5.3, strafe: 0.78, cover: 0.46, flank: 0.7, aggression: 0.68, objective: 0.76 }),
   colossus: Object.freeze({ preferred: 1.55, strafe: 0.2, cover: -0.25, flank: 0.18, aggression: 1.0, objective: 0.82 }),
 });
 

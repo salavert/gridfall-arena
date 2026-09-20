@@ -13,6 +13,8 @@ test('role tactics create distinct preferred combat geometry', () => {
   assert.ok(roleTactics('spectre').preferred > roleTactics('volt').preferred);
   assert.ok(roleTactics('colossus').aggression > roleTactics('hex').aggression);
   assert.ok(roleTactics('spectre').cover > roleTactics('colossus').cover);
+  assert.ok(roleTactics('carla').flank > roleTactics('spectre').flank);
+  assert.ok(roleTactics('bruno').objective > roleTactics('volt').objective);
 });
 
 test('tactical points reward role-appropriate range and safety', () => {

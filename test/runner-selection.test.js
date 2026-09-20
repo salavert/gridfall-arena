@@ -7,14 +7,14 @@ import { RUNNERS } from '../src/game/config.js';
 import { RUNNER_IDS, selectedRunnerIndex, nextRunnerId, menuKeyAction, runnerStats } from '../src/presentation/runnerSelection.js';
 import { FrontEndDirector } from '../src/presentation/FrontEndDirector.js';
 
-test('ordered runner selection wraps in either direction, including a 2x2 row', () => {
-  assert.deepEqual(RUNNER_IDS, ['volt', 'spectre', 'hex', 'colossus']);
+test('ordered six-runner selection wraps in either direction', () => {
+  assert.deepEqual(RUNNER_IDS, ['volt', 'spectre', 'hex', 'colossus', 'carla', 'bruno']);
   for (const [index, id] of RUNNER_IDS.entries()) {
     assert.equal(selectedRunnerIndex(id), index);
-    assert.equal(nextRunnerId(id, 1), RUNNER_IDS[(index + 1) % 4]);
-    assert.equal(nextRunnerId(id, -1), RUNNER_IDS[(index + 3) % 4]);
-    assert.equal(nextRunnerId(id, 2), RUNNER_IDS[(index + 2) % 4]);
-    assert.equal(nextRunnerId(id, -2), nextRunnerId(id, 2));
+    assert.equal(nextRunnerId(id, 1), RUNNER_IDS[(index + 1) % RUNNER_IDS.length]);
+    assert.equal(nextRunnerId(id, -1), RUNNER_IDS[(index - 1 + RUNNER_IDS.length) % RUNNER_IDS.length]);
+    assert.equal(nextRunnerId(id, 2), RUNNER_IDS[(index + 2) % RUNNER_IDS.length]);
+    assert.equal(nextRunnerId(id, -2), RUNNER_IDS[(index - 2 + RUNNER_IDS.length) % RUNNER_IDS.length]);
   }
   assert.equal(selectedRunnerIndex('stale-id'), 0);
   assert.equal(nextRunnerId('stale-id', 1), 'spectre');
@@ -27,11 +27,21 @@ test('menu keys support physical keys, fallbacks, two rows and browser shortcuts
   for (const code of ['Enter', 'NumpadEnter', 'Space']) assert.deepEqual(menuKeyAction({ code }), { start: true });
   assert.deepEqual(menuKeyAction({ code: 'ArrowUp' }, 2), { step: -2 });
   assert.deepEqual(menuKeyAction({ code: 'KeyS' }, 2), { step: 2 });
+  assert.deepEqual(menuKeyAction({ code: 'ArrowDown' }, 3), { step: 3 });
   assert.equal(menuKeyAction({ code: 'ArrowUp' }), null);
   assert.equal(menuKeyAction({ code: 'Escape' }), null);
   for (const modifier of ['altKey', 'ctrlKey', 'metaKey']) {
     assert.equal(menuKeyAction({ code: 'KeyD', [modifier]: true }), null);
   }
+});
+
+test('new runners keep their intended combat identities', () => {
+  assert.equal(RUNNERS.carla.attack.visual, 'carla-whip');
+  assert.equal(RUNNERS.carla.super.visual, 'carla-dog');
+  assert.equal(RUNNERS.bruno.attack.visual, 'bruno-ball');
+  assert.equal(RUNNERS.bruno.super.visual, 'bruno-mega');
+  assert.equal(RUNNERS.carla.super.pierce, true);
+  assert.equal(RUNNERS.bruno.super.breaksWalls, true);
 });
 
 test('runner indicators use actual health, range and complete volley damage', () => {
@@ -75,7 +85,7 @@ test('HUD owns menu navigation with body, roster or Start focus; start fires onc
     assert.equal(event.stopped, true);
     hud.menuKeys.clear();
   }
-  assert.equal(hud.selected, 'hex');
+  assert.equal(hud.selected, 'carla');
   hud.handleMenuKey(key('Space'));
   assert.equal(hud.starts, 1);
   const repeat = key('Space', { repeat: true });

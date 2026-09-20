@@ -18,8 +18,8 @@ export function menuKeyAction({ code, key, altKey, ctrlKey, metaKey }, columns =
   const input = code || key?.toLowerCase();
   if (['ArrowLeft', 'KeyA', 'arrowleft', 'a'].includes(input)) return { step: -1 };
   if (['ArrowRight', 'KeyD', 'arrowright', 'd'].includes(input)) return { step: 1 };
-  if (columns === 2 && ['ArrowUp', 'KeyW', 'arrowup', 'w'].includes(input)) return { step: -2 };
-  if (columns === 2 && ['ArrowDown', 'KeyS', 'arrowdown', 's'].includes(input)) return { step: 2 };
+  if (columns > 1 && ['ArrowUp', 'KeyW', 'arrowup', 'w'].includes(input)) return { step: -columns };
+  if (columns > 1 && ['ArrowDown', 'KeyS', 'arrowdown', 's'].includes(input)) return { step: columns };
   if (['Enter', 'NumpadEnter', 'Space', 'enter', ' '].includes(input)) return { start: true };
   return null;
 }
