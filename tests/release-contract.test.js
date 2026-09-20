@@ -43,3 +43,10 @@ test('production page retains the full rendering and game systems', () => {
   }
   assert.equal(RULES.gasDuration, 115);
 });
+
+
+test('production HTML delegates runtime to a module', () => {
+  assert.match(html, /src=["']\.\/src\/runtime\.js["']/);
+  assert.ok(html.length < 120000, 'index.html should remain a document/bootstrap, not the game engine');
+  assert.ok(runtime.length > 100000, 'production runtime should live outside index.html');
+});
