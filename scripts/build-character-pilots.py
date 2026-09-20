@@ -254,6 +254,58 @@ def build_teen_clothes(body: bpy.types.Object, character: str):
     return pieces
 
 
+def transform_mesh_around_world_center(
+    obj: bpy.types.Object,
+    center_world: Vector,
+    factors: tuple[float, float, float],
+    *,
+    vertex_filter=None,
+) -> None:
+    inverse = obj.matrix_world.inverted()
+    for vertex in obj.data.vertices:
+        if vertex_filter is not None and not vertex_filter(vertex):
+            continue
+        world = obj.matrix_world @ vertex.co
+        delta = world - center_world
+        world = center_world + Vector((
+            delta.x * factors[0],
+            delta.y * factors[1],
+            delta.z * factors[2],
+        ))
+        vertex.co = inverse @ world
+    obj.data.update()
+
+
+def stylize_teen_head(base_objects, body, character: str) -> None:
+    bounds = weighted_region_bounds(body, ('Head', 'neck_01'))
+    if not bounds:
+        return
+    lo, hi = bounds
+    center = (lo + hi) * .5
+    head_group_ids = {
+        group.index for group in body.vertex_groups
+        if group.name in {'Head', 'neck_01'}
+    }
+
+    def is_head(vertex):
+        return any(
+            assignment.group in head_group_ids and assignment.weight >= .12
+            for assignment in vertex.groups
+        )
+
+    # Slightly larger and rounder than stock UBC Teen. The change is modest:
+    # the goal is a readable 7–12-year-old game silhouette, not chibi.
+    factors = (1.14, 1.11, 1.07)
+    transform_mesh_around_world_center(body, center, factors, vertex_filter=is_head)
+
+    for obj in mesh_objects(base_objects):
+        if obj is body:
+            continue
+        lower = obj.name.lower()
+        if 'eye' in lower or 'brow' in lower or 'face' in lower:
+            transform_mesh_around_world_center(obj, center, factors)
+
+
 def bone_depth(pose_bone) -> int:
     depth = 0
     parent = pose_bone.parent
@@ -303,6 +355,7 @@ def retarget_peasant_outfit(path: Path, target_rig, character: str):
             'legs': flat_material('GF_Carla_Jeans', (.18, .31, .43, 1), .84),
             'feet': flat_material('GF_Carla_Boots', (.19, .105, .055, 1), .66),
         }
+        hand_skin = flat_material('GF_Carla_Hands', (.84, .59, .43, 1), .82)
     else:
         palette = {
             'body': flat_material('GF_Bruno_Vest', (.10, .28, .50, 1), .76),
@@ -310,6 +363,7 @@ def retarget_peasant_outfit(path: Path, target_rig, character: str):
             'legs': flat_material('GF_Bruno_Pants', (.13, .23, .36, 1), .84),
             'feet': flat_material('GF_Bruno_Boots', (.14, .085, .05, 1), .66),
         }
+        hand_skin = flat_material('GF_Bruno_Hands', (.82, .55, .39, 1), .82)
 
     result = []
     for source in mesh_objects(imported):
@@ -343,6 +397,31 @@ def retarget_peasant_outfit(path: Path, target_rig, character: str):
         modifier.object = target_rig
         clone.data.materials.clear()
         clone.data.materials.append(palette[piece])
+
+        if piece == 'arms':
+            clone.data.materials.append(hand_skin)
+            hand_tokens = (
+                'hand_', 'thumb_', 'index_', 'middle_', 'ring_', 'pinky_',
+            )
+            hand_group_ids = {
+                group.index for group in clone.vertex_groups
+                if any(token in group.name for token in hand_tokens)
+            }
+            for polygon in clone.data.polygons:
+                hand_score = 0.0
+                for vertex_index in polygon.vertices:
+                    vertex = clone.data.vertices[vertex_index]
+                    hand_score += max(
+                        (
+                            assignment.weight
+                            for assignment in vertex.groups
+                            if assignment.group in hand_group_ids
+                        ),
+                        default=0.0,
+                    )
+                if polygon.vertices and hand_score / len(polygon.vertices) >= .18:
+                    polygon.material_index = 1
+
         result.append(clone)
 
     # Remove every source outfit object and its adult rig after baking.
@@ -358,22 +437,9 @@ def retarget_peasant_outfit(path: Path, target_rig, character: str):
 
 
 def keep_exposed_teen_skin(body: bpy.types.Object) -> None:
-    # Full Peasant clothing covers the torso and legs. Keep only head/neck and
-    # hands from the Teen body to avoid z-fighting and to reduce duplicate
-    # geometry while retaining the authored face.
-    exposed = {
-        'Head', 'neck_01', 'hand_l', 'hand_r',
-        'thumb_01_l', 'thumb_02_l', 'thumb_03_l', 'thumb_04_leaf_l',
-        'index_01_l', 'index_02_l', 'index_03_l', 'index_04_leaf_l',
-        'middle_01_l', 'middle_02_l', 'middle_03_l', 'middle_04_leaf_l',
-        'ring_01_l', 'ring_02_l', 'ring_03_l', 'ring_04_leaf_l',
-        'pinky_01_l', 'pinky_02_l', 'pinky_03_l', 'pinky_04_leaf_l',
-        'thumb_01_r', 'thumb_02_r', 'thumb_03_r', 'thumb_04_leaf_r',
-        'index_01_r', 'index_02_r', 'index_03_r', 'index_04_leaf_r',
-        'middle_01_r', 'middle_02_r', 'middle_03_r', 'middle_04_leaf_r',
-        'ring_01_r', 'ring_02_r', 'ring_03_r', 'ring_04_leaf_r',
-        'pinky_01_r', 'pinky_02_r', 'pinky_03_r', 'pinky_04_leaf_r',
-    }
+    # Peasant_Arms already contains hands. Keeping Teen hands underneath caused
+    # the doubled-finger silhouette seen in the previous Carla preview.
+    exposed = {'Head', 'neck_01'}
     group_ids = {
         group.index for group in body.vertex_groups
         if group.name in exposed
@@ -443,20 +509,38 @@ def make_rigid(obj: bpy.types.Object, rig, bone_name: str) -> None:
 def attach_hair(path: Path, rig, body, color, *, fullness: float = 1.12):
     imported = import_asset(path)
     source_rig = find_armature(imported)
-    source_bone = source_rig.data.bones.get('Head')
-    target_bone = rig.data.bones.get('Head')
-    if not source_bone or not target_bone:
-        raise RuntimeError('Hair asset and target rig both need a Head bone')
-
-    source_head_world = source_rig.matrix_world @ source_bone.matrix_local
-    target_head_world = rig.matrix_world @ target_bone.matrix_local
-    align = target_head_world @ source_head_world.inverted()
-
+    pose_outfit_rig_to_target_bind(source_rig, rig)
+    depsgraph = bpy.context.evaluated_depsgraph_get()
     hair_mat = flat_material('GF_Hair', color, .82)
     result = []
-    for obj in mesh_objects(imported):
-        obj.matrix_world = align @ obj.matrix_world
-        result.append(obj)
+
+    for source in mesh_objects(imported):
+        evaluated = source.evaluated_get(depsgraph)
+        baked_mesh = bpy.data.meshes.new_from_object(
+            evaluated,
+            preserve_all_data_layers=True,
+            depsgraph=depsgraph,
+        )
+        baked_mesh.name = f'{source.name}_TeenFit'
+        clone = source.copy()
+        clone.data = baked_mesh
+        clone.name = baked_mesh.name
+        bpy.context.collection.objects.link(clone)
+
+        for modifier in list(clone.modifiers):
+            clone.modifiers.remove(modifier)
+        source_relative = source_rig.matrix_world.inverted() @ source.matrix_world
+        clone.parent = rig
+        clone.matrix_world = rig.matrix_world @ source_relative
+        modifier = clone.modifiers.new('GridfallTeenRig', 'ARMATURE')
+        modifier.object = rig
+        clone.data.materials.clear()
+        clone.data.materials.append(hair_mat)
+        result.append(clone)
+
+    for obj in imported:
+        if obj.name in bpy.data.objects:
+            bpy.data.objects.remove(obj, do_unlink=True)
 
     head_bounds = weighted_region_bounds(body, ('Head', 'neck_01'))
     if head_bounds and result:
@@ -466,22 +550,21 @@ def attach_hair(path: Path, rig, body, color, *, fullness: float = 1.12):
         hair_center = (hair_lo + hair_hi) * .5
         head_width = max(.001, head_hi.x - head_lo.x)
         hair_width = max(.001, hair_hi.x - hair_lo.x)
-        fit = max(.62, min(1.08, (head_width * fullness) / hair_width))
+        fit = max(.72, min(1.10, (head_width * fullness) / hair_width))
 
-        desired = head_center.copy()
-        desired.z += (head_hi.z - head_lo.z) * .10
+        # Fit the baked bind-space geometry itself. Object transforms remain
+        # neutral so SkeletonUtils/AnimationMixer can treat hair like any other
+        # skinned body part.
         for obj in result:
-            world = obj.matrix_world.copy()
-            world.translation = desired + (world.translation - hair_center) * fit
-            obj.matrix_world = world
-            obj.scale *= fit
+            inverse = obj.matrix_world.inverted()
+            desired = head_center.copy()
+            desired.z += (head_hi.z - head_lo.z) * .10
+            for vertex in obj.data.vertices:
+                world = obj.matrix_world @ vertex.co
+                world = desired + (world - hair_center) * fit
+                vertex.co = inverse @ world
+            obj.data.update()
 
-    for obj in result:
-        make_rigid(obj, rig, 'Head')
-        obj.data.materials.clear()
-        obj.data.materials.append(hair_mat)
-
-    strip_armature(imported, keep=rig)
     return result
 
 
@@ -717,7 +800,7 @@ def setup_preview_camera(character_objects, output: Path, name: str):
     rim.data.energy = 650
     rim.data.size = 2.6
 
-    bpy.ops.object.camera_add(location=(2.0, -3.0, 1.65))
+    bpy.ops.object.camera_add(location=(2.15, -3.35, 1.42))
     camera = bpy.context.object
     camera.data.type = 'ORTHO'
     camera.data.ortho_scale = 1.72
@@ -768,6 +851,7 @@ def build_character(source: Path, output: Path, character: str):
     rig = find_armature(base)
     rig.name = 'GridfallRig'
     body = style_teen_base(base, character)
+    stylize_teen_head(base, body, character)
 
     # Reproject authored Peasant clothing to the Teen bind pose instead of
     # wearing an adult rig or generating skin-tight clothing from the body.
