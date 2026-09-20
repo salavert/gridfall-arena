@@ -67,3 +67,30 @@ test('core power presentation grows quickly then saturates without runaway scale
   assert.ok(ten.weaponScale < 1.05);
   assert.ok(ten.auraScale < 1.25);
 });
+
+
+test('destruction profiles keep persistent wreckage bounded by material', async () => {
+  const { destructionProfile } = await import('../src/presentation/combat.js');
+  const stone = destructionProfile('stone', 1.4);
+  const foliage = destructionProfile('foliage', 1);
+  assert.ok(stone.debris > foliage.debris);
+  assert.ok(stone.persist > foliage.persist);
+  assert.equal(stone.scar, 'crack');
+  assert.equal(foliage.scar, null);
+  assert.ok(stone.velocity < 1.6);
+});
+
+test('each super leaves a distinct semantic scar and temporary field', async () => {
+  const { superScarProfile } = await import('../src/presentation/combat.js');
+  const volt = superScarProfile('volt');
+  const spectre = superScarProfile('spectre');
+  const hex = superScarProfile('hex');
+  const colossus = superScarProfile('colossus');
+  assert.deepEqual(
+    [volt.type, spectre.type, hex.type, colossus.type],
+    ['electric', 'slash', 'rift', 'crack'],
+  );
+  assert.ok(spectre.aspect > 2);
+  assert.ok(hex.zoneLife > volt.zoneLife);
+  assert.ok(colossus.size > volt.size);
+});

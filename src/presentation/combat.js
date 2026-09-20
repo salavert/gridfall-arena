@@ -95,3 +95,38 @@ export function corePowerPresentation(cubes) {
     light: power * 1.35,
   };
 }
+
+
+export function destructionProfile(surface, power = 1) {
+  const p = clamp(power, 0.5, 1.8);
+  const profiles = {
+    stone: { color: 0x9a927f, debris: 12, dust: 9, persist: 0.42, scar: 'crack', scarColor: 0x403a32 },
+    wood: { color: 0xa87648, debris: 10, dust: 7, persist: 0.34, scar: 'slash', scarColor: 0x5a3b22 },
+    metal: { color: 0xc28a5b, debris: 9, dust: 5, persist: 0.3, scar: 'scorch', scarColor: 0x241b17 },
+    foliage: { color: 0x4f7a3e, debris: 5, dust: 3, persist: 0.08, scar: null, scarColor: 0x314128 },
+  };
+  const base = profiles[surface] || profiles.stone;
+  return {
+    ...base,
+    debris: Math.round(base.debris * (0.72 + p * 0.36)),
+    dust: Math.round(base.dust * (0.72 + p * 0.28)),
+    velocity: 0.7 + p * 0.48,
+    scarSize: 0.13 + p * 0.08,
+  };
+}
+
+export function superScarProfile(id, power = 1) {
+  const p = clamp(power, 0.55, 1.6);
+  const profiles = {
+    volt: { type: 'electric', decalColor: 0x163d41, aspect: 1.15, life: 52, peak: 0.46, zoneLife: 3.4, zoneAspect: 1.12 },
+    spectre: { type: 'slash', decalColor: 0x211c39, aspect: 3.1, life: 46, peak: 0.5, zoneLife: 2.6, zoneAspect: 2.5 },
+    hex: { type: 'rift', decalColor: 0x35173e, aspect: 1.25, life: 62, peak: 0.55, zoneLife: 5.1, zoneAspect: 1.18 },
+    colossus: { type: 'crack', decalColor: 0x342b27, aspect: 1.45, life: 66, peak: 0.56, zoneLife: 3.2, zoneAspect: 1.35 },
+  };
+  const base = profiles[id] || profiles.volt;
+  return {
+    ...base,
+    size: (id === 'spectre' ? 0.24 : id === 'colossus' ? 0.5 : id === 'hex' ? 0.42 : 0.3) * p,
+    zoneScale: (id === 'spectre' ? 0.85 : id === 'colossus' ? 1.2 : id === 'hex' ? 1.05 : 0.9) * p,
+  };
+}
