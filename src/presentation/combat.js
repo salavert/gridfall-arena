@@ -81,3 +81,17 @@ export function hitReactionPose(relativeAngle, heavy = false) {
     twist: clamp(Math.sin(relativeAngle) * 0.2 * force, -0.2, 0.2),
   };
 }
+
+
+export function corePowerPresentation(cubes) {
+  const count = Math.max(0, Number.isFinite(cubes) ? cubes : 0);
+  const power = 1 - Math.exp(-count / 4.5);
+  return {
+    power,
+    auraOpacity: count > 0 ? 0.035 + power * 0.13 : 0,
+    auraScale: 0.9 + power * 0.34,
+    weaponScale: 1 + power * 0.045,
+    emissive: power * 0.15,
+    light: power * 1.35,
+  };
+}

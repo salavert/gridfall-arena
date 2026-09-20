@@ -54,3 +54,16 @@ test('attack intent and hit reaction encode readable silhouettes', async () => {
   assert.ok(leftHit.tilt > 0.2);
   assert.ok(Math.abs(frontHit.pitch) > 0.15);
 });
+
+
+test('core power presentation grows quickly then saturates without runaway scale', async () => {
+  const { corePowerPresentation } = await import('../src/presentation/combat.js');
+  const zero = corePowerPresentation(0);
+  const three = corePowerPresentation(3);
+  const ten = corePowerPresentation(10);
+  assert.equal(zero.auraOpacity, 0);
+  assert.ok(three.power > 0.4);
+  assert.ok(ten.power > three.power && ten.power < 1);
+  assert.ok(ten.weaponScale < 1.05);
+  assert.ok(ten.auraScale < 1.25);
+});
