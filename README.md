@@ -35,7 +35,7 @@ The latest published version is deployed from `main` through the manual GitHub P
 - Procedural textures, instancing, pooled particles, limited dynamic lights, and spatialized synthesized audio keep the game asset-free.
 - A fixed 60 Hz simulation maintains movement and combat speed at ordinary low frame rates. Long tab suspensions are discarded.
 - Volt uses 6,684 triangles and 41 model meshes, with static pieces merged by material and geometry shared between instances.
-- Vite bundles the existing engine and the modular Volt implementation.
+- Vite bundles the modern bootstrap and feature modules; the legacy Three/runtime kernel is isolated from gameplay subsystems and loaded before them.
 
 ## Development
 
@@ -55,16 +55,29 @@ npm run check
 ## Structure
 
 ```text
-index.html       production scene/render loop and interface
-src/game/        production roster, rules and world-facing constants
-src/presentation/ pure combat/camera presentation tuning
-src/systems/     production audio system
-src/volt/        active Volt model, combat, input and fixed simulation clock
-src/ (others)    archived v0.1 prototype
-public/          portrait rendered from the playable model
-scripts/         reproducible CPU portrait renderer
-tests/           combat integration, timing, rules and release tests
+index.html                 document, UI shell and production bootstrap tag
+src/runtime.js             small production orchestrator and dependency bridge
+public/runtime/kernel.js   isolated legacy Three.js/runtime kernel
+public/runtime/Renderer.js production renderer and post-processing
+public/runtime/Lighting.js lighting, environment and shared runtime math
+public/runtime/Arena.js    procedural arena, materials, water, hazards and objectives
+public/runtime/Runner.js   playable runner model integration and animation
+public/runtime/Combat.js   projectiles, bombs, boxes, cores and telegraphs
+public/runtime/Effects.js  pooled particles, decals, debris and combat VFX
+public/runtime/Void.js     collapsing-grid simulation and visuals
+public/runtime/AI.js       bot tactics and combat decisions
+public/runtime/Input.js    keyboard, mouse and touch input
+public/runtime/Hud.js      menu, combat HUD, warnings and overlays
+public/runtime/Game.js     match orchestration, camera and game state
+src/game/                  production roster, rules, AI tuning and world constants
+src/presentation/          pure presentation tuning used by production systems
+src/systems/               production procedural audio
+src/volt/                  Volt model, combat behavior and fixed simulation clock
+scripts/                   reproducible CPU portrait renderer
+tests/                     combat integration, timing, architecture and release tests
 ```
+
+The production runtime is intentionally split without changing gameplay behavior. The remaining compatibility seam is `public/runtime/kernel.js`, which still contains the minified Three.js-derived kernel and legacy aliases. New gameplay or presentation code should go into the named production subsystem files or the normal `src/*` modules, not back into the kernel.
 
 ## Volt art and validation
 
