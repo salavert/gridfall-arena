@@ -10,9 +10,9 @@ import { shootVolt, controlVoltDesktop, controlVoltTouch, updateVoltCharge, reac
 
 // Load the actual production engine and its bundled Three classes, excluding
 // only browser bootstrap. No second Three instance or alternate runner model.
-let source = (await readFile(new URL('../index.html', import.meta.url),'utf8')).match(/<script type="module">([\s\S]*?)<\/script>/)[1];
+let source = await readFile(new URL('../src/runtime.js', import.meta.url),'utf8');
 source = source.slice(0,source.indexOf(';function ud('))+';export {fu,Vu,Bc,VOLT_GRAPHICS};';
-source = source.replace(/from '(\.\/src\/[^']+)'/g,(_,p)=>`from '${new URL('../'+p,import.meta.url)}'`).replace(/import '\.\/src\/[^']+\.css';/g,'');
+source = source.replace(/from '(\.\/[^']+)'/g,(_,p)=>`from '${new URL('../src/'+p.slice(2),import.meta.url)}'`).replace(/import '\.\/[^']+\.css';/g,'');
 globalThis.window = { addEventListener(){}, devicePixelRatio:1 };
 globalThis.document = { getElementById(){return null;} };
 const moduleDir = await mkdtemp(join(tmpdir(), 'gridfall-volt-test-'));
